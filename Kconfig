@@ -36,6 +36,15 @@ config ESP_SERIAL_BRIDGE_STA_PSK
 	string "STA target AP password"
 	default ""
 
+config ESP_SERIAL_BRIDGE_STA_ROTATE_MAC
+	bool "Rotate STA MAC address on boot"
+	default y
+	depends on ESP_SERIAL_BRIDGE_STA_ENABLE
+	help
+	  Use a random locally administered STA MAC address on each boot. This
+	  avoids stale station state on APs that keep the previous association
+	  after the ESP resets without sending a deauthentication frame.
+
 config ESP_SERIAL_BRIDGE_TCP_PORT
 	int "NMEA TCP port"
 	default 10110
