@@ -15,7 +15,7 @@ LOG_MODULE_REGISTER(tcp_signalk_client, LOG_LEVEL_INF);
 
 static bool started;
 
-static int connect_gateway(struct net_in_addr *gw)
+static int connect_host(const struct net_in_addr *host)
 {
 	int fd = zsock_socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	if (fd < 0) {
@@ -26,11 +26,11 @@ static int connect_gateway(struct net_in_addr *gw)
 	struct sockaddr_in addr = { 0 };
 	addr.sin_family = AF_INET;
 	addr.sin_port = htons(CONFIG_ESP_SERIAL_BRIDGE_TCP_PORT);
-	addr.sin_addr = *gw;
+	addr.sin_addr = *host;
 
-	char gw_buf[NET_IPV4_ADDR_LEN];
-	net_addr_ntop(AF_INET, gw, gw_buf, sizeof(gw_buf));
-	LOG_INF("SignalK uplink connecting to %s:%d", gw_buf,
+	char host_buf[NET_IPV4_ADDR_LEN];
+	net_addr_ntop(AF_INET, host, host_buf, sizeof(host_buf));
+	LOG_INF("SignalK uplink connecting to %s:%d", host_buf,
 		CONFIG_ESP_SERIAL_BRIDGE_TCP_PORT);
 
 	if (zsock_connect(fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
@@ -47,6 +47,50 @@ static int connect_gateway(struct net_in_addr *gw)
 	return fd;
 }
 
+static bool get_signalk_host(struct net_in_addr *host)
+{
+	if (strlen(CONFIG_ESP_SERIAL_BRIDGE_SIGNALK_HOST) > 0) {
+		if (!wifi_manager_sta_ready()) {
+			return false;
+		}
+
+		if (net_addr_pton(AF_INET, CONFIG_ESP_SERIAL_BRIDGE_SIGNALK_HOST, host) != 0) {
+			LOG_ERR("Invalid SignalK host IP: %s", CONFIG_ESP_SERIAL_BRIDGE_SIGNALK_HOST);
+			k_sleep(K_SECONDS(30));
+			return false;
+		}
+
+		return true;
+	}
+
+	return wifi_manager_get_sta_gateway(host);
+}
+
+static int drain_socket_rx(int fd)
+{
+	uint8_t buf[128];
+
+	for (;;) {
+		ssize_t received = zsock_recv(fd, buf, sizeof(buf), ZSOCK_MSG_DONTWAIT);
+
+		if (received > 0) {
+			continue;
+		}
+
+		if (received == 0) {
+			LOG_INF("SignalK peer closed connection");
+			return -ECONNRESET;
+		}
+
+		if (errno == EAGAIN || errno == EWOULDBLOCK) {
+			return 0;
+		}
+
+		LOG_WRN("SignalK recv failed: errno=%d", errno);
+		return -errno;
+	}
+}
+
 static void uplink_thread(void *a, void *b, void *c)
 {
 	ARG_UNUSED(a);
@@ -56,13 +100,19 @@ static void uplink_thread(void *a, void *b, void *c)
 	uint32_t backoff_s = 1;
 
 	for (;;) {
-		struct net_in_addr gw;
+		struct net_in_addr host;
+		uint32_t wait_ticks = 0;
 
-		while (!wifi_manager_get_sta_gateway(&gw)) {
+		while (!get_signalk_host(&host)) {
+			wait_ticks++;
+			if ((wait_ticks % 5U) == 0U) {
+				LOG_INF("SignalK uplink waiting for STA IPv4%s",
+					strlen(CONFIG_ESP_SERIAL_BRIDGE_SIGNALK_HOST) > 0 ? "" : " gateway");
+			}
 			k_sleep(K_SECONDS(2));
 		}
 
-		int fd = connect_gateway(&gw);
+		int fd = connect_host(&host);
 		if (fd < 0) {
 			k_sleep(K_SECONDS(backoff_s));
 			backoff_s = MIN(backoff_s * 2, 30U);
@@ -80,7 +130,11 @@ static void uplink_thread(void *a, void *b, void *c)
 
 		struct nmea_frame frame;
 		while (wifi_manager_sta_ready()) {
-			if (nmea_bridge_sink_get(sink_id, &frame, K_SECONDS(1)) != 0) {
+			if (drain_socket_rx(fd) != 0) {
+				break;
+			}
+
+			if (nmea_bridge_sink_get(sink_id, &frame, K_MSEC(250)) != 0) {
 				continue;
 			}
 
@@ -88,6 +142,10 @@ static void uplink_thread(void *a, void *b, void *c)
 			if (sent != frame.len) {
 				LOG_WRN("SignalK send failed/partial: sent=%zd len=%u errno=%d",
 					sent, frame.len, errno);
+				break;
+			}
+
+			if (drain_socket_rx(fd) != 0) {
 				break;
 			}
 		}

@@ -13,9 +13,18 @@ config ESP_SERIAL_BRIDGE_STA_ENABLE
 	default y
 
 config ESP_SERIAL_BRIDGE_SIGNALK_UPLINK_ENABLE
-	bool "Enable SignalK TCP uplink via STA gateway"
+	bool "Enable SignalK TCP uplink"
 	default y
 	depends on ESP_SERIAL_BRIDGE_STA_ENABLE
+
+config ESP_SERIAL_BRIDGE_SIGNALK_HOST
+	string "SignalK TCP host IPv4 address"
+	default ""
+	depends on ESP_SERIAL_BRIDGE_SIGNALK_UPLINK_ENABLE
+	help
+	  IPv4 address of the SignalK TCP input server. Leave empty to use the
+	  DHCP gateway learned on the STA interface, useful when the ESP connects
+	  directly to a Raspberry Pi/OpenPlotter hotspot.
 
 config ESP_SERIAL_BRIDGE_AP_SSID
 	string "SoftAP SSID"
