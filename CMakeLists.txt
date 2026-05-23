@@ -14,6 +14,11 @@ target_sources(app PRIVATE
   src/tcp_nmea_session.c
 )
 
+target_sources_ifdef(CONFIG_ESP_SERIAL_BRIDGE_STATUS_LED_ENABLE app PRIVATE
+  src/status_led.c
+  src/status_led_policy.c
+)
+
 target_sources_ifdef(CONFIG_ESP_SERIAL_BRIDGE_TCP_NMEA_CLIENT_ENABLE app PRIVATE
   src/tcp_nmea_client.c
 )

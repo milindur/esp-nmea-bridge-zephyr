@@ -1,0 +1,4 @@
+tests:
+  esp_serial_bridge.status_led_policy:
+    platform_allow: native_sim
+    tags: status_led

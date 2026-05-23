@@ -21,6 +21,16 @@ config ESP_SERIAL_BRIDGE_TCP_NMEA_CLIENT_ENABLE
 	default y
 	depends on ESP_SERIAL_BRIDGE_STA_ENABLE
 
+config ESP_SERIAL_BRIDGE_STATUS_LED_ENABLE
+	bool "Enable status LED observer"
+	default y
+	select LED_STRIP
+	help
+	  Enable the optional status LED observer. When enabled, the observer
+	  looks for a NeoPixel-compatible LED strip through the led-strip
+	  devicetree alias and renders NMEA connection state. Missing or
+	  non-ready LED hardware is non-fatal.
+
 config ESP_SERIAL_BRIDGE_TCP_NMEA_CLIENT_HOST
 	string "TCP NMEA server IPv4 address"
 	default ""

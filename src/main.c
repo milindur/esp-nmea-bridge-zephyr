@@ -1,4 +1,5 @@
 #include "nmea_bridge.h"
+#include "status_led.h"
 #include "tcp_nmea_server.h"
 #include "tcp_nmea_client.h"
 #include "uart_nmea.h"
@@ -39,6 +40,7 @@ int main(void)
 	LOG_INF("ESP serial bridge on %s", CONFIG_BOARD_TARGET);
 
 	nmea_bridge_init();
+	(void)status_led_start();
 
 	int ret = uart_nmea_start();
 	if (ret != 0) {
