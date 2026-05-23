@@ -1,9 +1,8 @@
 #include "tcp_nmea_server.h"
 
-#include "nmea_bridge.h"
+#include "tcp_nmea_session.h"
 
 #include <errno.h>
-#include <string.h>
 
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
@@ -14,7 +13,6 @@ LOG_MODULE_REGISTER(tcp_nmea_server, LOG_LEVEL_INF);
 
 struct client_slot {
 	int fd;
-	int sink_id;
 	bool active;
 	struct k_thread thread;
 	K_KERNEL_STACK_MEMBER(stack, 2048);
@@ -25,33 +23,11 @@ static int listen_fd = -1;
 static bool started;
 static struct k_mutex clients_lock;
 
-static bool client_socket_closed(struct client_slot *client)
-{
-	uint8_t byte;
-	ssize_t ret = zsock_recv(client->fd, &byte, sizeof(byte), ZSOCK_MSG_PEEK | ZSOCK_MSG_DONTWAIT);
-
-	if (ret == 0) {
-		return true;
-	}
-
-	if (ret < 0 && errno != EAGAIN && errno != EWOULDBLOCK) {
-		LOG_WRN("TCP client recv check failed: errno=%d", errno);
-		return true;
-	}
-
-	return false;
-}
-
 static void close_client(struct client_slot *client)
 {
 	if (client->fd >= 0) {
 		(void)zsock_close(client->fd);
 		client->fd = -1;
-	}
-
-	if (client->sink_id >= 0) {
-		nmea_bridge_sink_unregister(client->sink_id);
-		client->sink_id = -1;
 	}
 
 	k_mutex_lock(&clients_lock, K_FOREVER);
@@ -65,24 +41,8 @@ static void client_thread(void *a, void *b, void *c)
 	ARG_UNUSED(b);
 	ARG_UNUSED(c);
 
-	struct nmea_frame frame;
-
-	while (client->active) {
-		int ret = nmea_bridge_sink_get(client->sink_id, &frame, K_SECONDS(1));
-		if (ret != 0) {
-			if (client_socket_closed(client)) {
-				break;
-			}
-			continue;
-		}
-
-		ssize_t sent = zsock_send(client->fd, frame.data, frame.len, 0);
-		if (sent != frame.len) {
-			LOG_WRN("TCP client send failed/partial: sent=%zd len=%u errno=%d",
-				sent, frame.len, errno);
-			break;
-		}
-	}
+	(void)tcp_nmea_session_run(client->fd, "tcp-server-client");
+	client->fd = -1;
 
 	close_client(client);
 	LOG_INF("TCP client disconnected");
@@ -96,7 +56,6 @@ static struct client_slot *alloc_client(void)
 	for (int i = 0; i < ARRAY_SIZE(clients); i++) {
 		if (!clients[i].active) {
 			clients[i].fd = -1;
-			clients[i].sink_id = -1;
 			clients[i].active = true;
 			client = &clients[i];
 			break;
@@ -162,13 +121,6 @@ static void server_thread(void *a, void *b, void *c)
 		}
 
 		client->fd = fd;
-		client->sink_id = nmea_bridge_sink_register("tcp-server-client");
-		if (client->sink_id < 0) {
-			LOG_ERR("Unable to register TCP client sink");
-			close_client(client);
-			continue;
-		}
-
 		k_thread_create(&client->thread, client->stack, K_KERNEL_STACK_SIZEOF(client->stack),
 				client_thread, client, NULL, NULL, 7, 0, K_NO_WAIT);
 		LOG_INF("TCP client connected");
@@ -189,7 +141,6 @@ int tcp_nmea_server_start(void)
 		k_mutex_init(&clients_lock);
 		for (int i = 0; i < ARRAY_SIZE(clients); i++) {
 			clients[i].fd = -1;
-			clients[i].sink_id = -1;
 		}
 		started = true;
 		k_thread_create(&tcp_server_thread, tcp_server_stack,

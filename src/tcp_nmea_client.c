@@ -1,6 +1,6 @@
 #include "tcp_nmea_client.h"
 
-#include "nmea_bridge.h"
+#include "tcp_nmea_session.h"
 #include "wifi_manager.h"
 
 #include <errno.h>
@@ -66,31 +66,6 @@ static bool get_tcp_nmea_server_host(struct net_in_addr *host)
 	return wifi_manager_get_sta_gateway(host);
 }
 
-static int drain_socket_rx(int fd)
-{
-	uint8_t buf[128];
-
-	for (;;) {
-		ssize_t received = zsock_recv(fd, buf, sizeof(buf), ZSOCK_MSG_DONTWAIT);
-
-		if (received > 0) {
-			continue;
-		}
-
-		if (received == 0) {
-			LOG_INF("TCP NMEA peer closed connection");
-			return -ECONNRESET;
-		}
-
-		if (errno == EAGAIN || errno == EWOULDBLOCK) {
-			return 0;
-		}
-
-		LOG_WRN("TCP NMEA recv failed: errno=%d", errno);
-		return -errno;
-	}
-}
-
 static void client_thread(void *a, void *b, void *c)
 {
 	ARG_UNUSED(a);
@@ -120,38 +95,7 @@ static void client_thread(void *a, void *b, void *c)
 		}
 
 		backoff_s = 1;
-		int sink_id = nmea_bridge_sink_register("tcp-nmea-client");
-		if (sink_id < 0) {
-			LOG_ERR("Unable to register TCP NMEA client sink");
-			(void)zsock_close(fd);
-			k_sleep(K_SECONDS(5));
-			continue;
-		}
-
-		struct nmea_frame frame;
-		while (wifi_manager_sta_ready()) {
-			if (drain_socket_rx(fd) != 0) {
-				break;
-			}
-
-			if (nmea_bridge_sink_get(sink_id, &frame, K_MSEC(250)) != 0) {
-				continue;
-			}
-
-			ssize_t sent = zsock_send(fd, frame.data, frame.len, 0);
-			if (sent != frame.len) {
-				LOG_WRN("TCP NMEA send failed/partial: sent=%zd len=%u errno=%d",
-					sent, frame.len, errno);
-				break;
-			}
-
-			if (drain_socket_rx(fd) != 0) {
-				break;
-			}
-		}
-
-		nmea_bridge_sink_unregister(sink_id);
-		(void)zsock_close(fd);
+		(void)tcp_nmea_session_run(fd, "tcp-nmea-client");
 		LOG_INF("TCP NMEA client disconnected; reconnecting");
 		k_sleep(K_SECONDS(backoff_s));
 		backoff_s = MIN(backoff_s * 2, 30U);
