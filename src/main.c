@@ -1,6 +1,6 @@
 #include "nmea_bridge.h"
 #include "tcp_nmea_server.h"
-#include "tcp_signalk_client.h"
+#include "tcp_nmea_client.h"
 #include "uart_nmea.h"
 #include "wifi_manager.h"
 
@@ -56,12 +56,12 @@ int main(void)
 
 	ret = tcp_nmea_server_start();
 	if (ret != 0) {
-		LOG_WRN("TCP server startup returned %d; UART ingestion continues", ret);
+		LOG_WRN("TCP NMEA server startup returned %d; UART ingestion continues", ret);
 	}
 
-	ret = tcp_signalk_client_start();
+	ret = tcp_nmea_client_start();
 	if (ret != 0) {
-		LOG_WRN("SignalK uplink startup returned %d; UART ingestion continues", ret);
+		LOG_WRN("TCP NMEA client startup returned %d; UART ingestion continues", ret);
 	}
 
 	return 0;

@@ -1,4 +1,4 @@
-#include "tcp_signalk_client.h"
+#include "tcp_nmea_client.h"
 
 #include "nmea_bridge.h"
 #include "wifi_manager.h"
@@ -11,31 +11,31 @@
 #include <zephyr/net/net_ip.h>
 #include <zephyr/net/socket.h>
 
-LOG_MODULE_REGISTER(tcp_signalk_client, LOG_LEVEL_INF);
+LOG_MODULE_REGISTER(tcp_nmea_client, LOG_LEVEL_INF);
 
 static bool started;
 
-static int connect_host(const struct net_in_addr *host)
+static int connect_server(const struct net_in_addr *host)
 {
 	int fd = zsock_socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	if (fd < 0) {
-		LOG_ERR("uplink socket failed: errno=%d", errno);
+		LOG_ERR("TCP NMEA client socket failed: errno=%d", errno);
 		return -errno;
 	}
 
 	struct sockaddr_in addr = { 0 };
 	addr.sin_family = AF_INET;
-	addr.sin_port = htons(CONFIG_ESP_SERIAL_BRIDGE_TCP_PORT);
+	addr.sin_port = htons(CONFIG_ESP_SERIAL_BRIDGE_TCP_NMEA_PORT);
 	addr.sin_addr = *host;
 
 	char host_buf[NET_IPV4_ADDR_LEN];
 	net_addr_ntop(AF_INET, host, host_buf, sizeof(host_buf));
-	LOG_INF("SignalK uplink connecting to %s:%d", host_buf,
-		CONFIG_ESP_SERIAL_BRIDGE_TCP_PORT);
+	LOG_INF("TCP NMEA client connecting to %s:%d", host_buf,
+		CONFIG_ESP_SERIAL_BRIDGE_TCP_NMEA_PORT);
 
 	if (zsock_connect(fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
 		int ret = -errno;
-		LOG_WRN("SignalK connect failed: errno=%d", errno);
+		LOG_WRN("TCP NMEA connect failed: errno=%d", errno);
 		(void)zsock_close(fd);
 		return ret;
 	}
@@ -43,19 +43,19 @@ static int connect_host(const struct net_in_addr *host)
 	int flags = zsock_fcntl(fd, ZVFS_F_GETFL, 0);
 	(void)zsock_fcntl(fd, ZVFS_F_SETFL, flags | ZVFS_O_NONBLOCK);
 
-	LOG_INF("SignalK uplink connected");
+	LOG_INF("TCP NMEA client connected");
 	return fd;
 }
 
-static bool get_signalk_host(struct net_in_addr *host)
+static bool get_tcp_nmea_server_host(struct net_in_addr *host)
 {
-	if (strlen(CONFIG_ESP_SERIAL_BRIDGE_SIGNALK_HOST) > 0) {
+	if (strlen(CONFIG_ESP_SERIAL_BRIDGE_TCP_NMEA_CLIENT_HOST) > 0) {
 		if (!wifi_manager_sta_ready()) {
 			return false;
 		}
 
-		if (net_addr_pton(AF_INET, CONFIG_ESP_SERIAL_BRIDGE_SIGNALK_HOST, host) != 0) {
-			LOG_ERR("Invalid SignalK host IP: %s", CONFIG_ESP_SERIAL_BRIDGE_SIGNALK_HOST);
+		if (net_addr_pton(AF_INET, CONFIG_ESP_SERIAL_BRIDGE_TCP_NMEA_CLIENT_HOST, host) != 0) {
+			LOG_ERR("Invalid TCP NMEA client host IP: %s", CONFIG_ESP_SERIAL_BRIDGE_TCP_NMEA_CLIENT_HOST);
 			k_sleep(K_SECONDS(30));
 			return false;
 		}
@@ -78,7 +78,7 @@ static int drain_socket_rx(int fd)
 		}
 
 		if (received == 0) {
-			LOG_INF("SignalK peer closed connection");
+			LOG_INF("TCP NMEA peer closed connection");
 			return -ECONNRESET;
 		}
 
@@ -86,12 +86,12 @@ static int drain_socket_rx(int fd)
 			return 0;
 		}
 
-		LOG_WRN("SignalK recv failed: errno=%d", errno);
+		LOG_WRN("TCP NMEA recv failed: errno=%d", errno);
 		return -errno;
 	}
 }
 
-static void uplink_thread(void *a, void *b, void *c)
+static void client_thread(void *a, void *b, void *c)
 {
 	ARG_UNUSED(a);
 	ARG_UNUSED(b);
@@ -103,16 +103,16 @@ static void uplink_thread(void *a, void *b, void *c)
 		struct net_in_addr host;
 		uint32_t wait_ticks = 0;
 
-		while (!get_signalk_host(&host)) {
+		while (!get_tcp_nmea_server_host(&host)) {
 			wait_ticks++;
 			if ((wait_ticks % 5U) == 0U) {
-				LOG_INF("SignalK uplink waiting for STA IPv4%s",
-					strlen(CONFIG_ESP_SERIAL_BRIDGE_SIGNALK_HOST) > 0 ? "" : " gateway");
+				LOG_INF("TCP NMEA client waiting for STA IPv4%s",
+					strlen(CONFIG_ESP_SERIAL_BRIDGE_TCP_NMEA_CLIENT_HOST) > 0 ? "" : " gateway");
 			}
 			k_sleep(K_SECONDS(2));
 		}
 
-		int fd = connect_host(&host);
+		int fd = connect_server(&host);
 		if (fd < 0) {
 			k_sleep(K_SECONDS(backoff_s));
 			backoff_s = MIN(backoff_s * 2, 30U);
@@ -120,9 +120,9 @@ static void uplink_thread(void *a, void *b, void *c)
 		}
 
 		backoff_s = 1;
-		int sink_id = nmea_bridge_sink_register("signalk-uplink");
+		int sink_id = nmea_bridge_sink_register("tcp-nmea-client");
 		if (sink_id < 0) {
-			LOG_ERR("Unable to register SignalK sink");
+			LOG_ERR("Unable to register TCP NMEA client sink");
 			(void)zsock_close(fd);
 			k_sleep(K_SECONDS(5));
 			continue;
@@ -140,7 +140,7 @@ static void uplink_thread(void *a, void *b, void *c)
 
 			ssize_t sent = zsock_send(fd, frame.data, frame.len, 0);
 			if (sent != frame.len) {
-				LOG_WRN("SignalK send failed/partial: sent=%zd len=%u errno=%d",
+				LOG_WRN("TCP NMEA send failed/partial: sent=%zd len=%u errno=%d",
 					sent, frame.len, errno);
 				break;
 			}
@@ -152,26 +152,26 @@ static void uplink_thread(void *a, void *b, void *c)
 
 		nmea_bridge_sink_unregister(sink_id);
 		(void)zsock_close(fd);
-		LOG_INF("SignalK uplink disconnected; reconnecting");
+		LOG_INF("TCP NMEA client disconnected; reconnecting");
 		k_sleep(K_SECONDS(backoff_s));
 		backoff_s = MIN(backoff_s * 2, 30U);
 	}
 }
 
-static struct k_thread signalk_uplink_thread;
-K_THREAD_STACK_DEFINE(signalk_uplink_stack, 4096);
+static struct k_thread tcp_nmea_client_thread;
+K_THREAD_STACK_DEFINE(tcp_nmea_client_stack, 4096);
 
-int tcp_signalk_client_start(void)
+int tcp_nmea_client_start(void)
 {
-	if (!IS_ENABLED(CONFIG_ESP_SERIAL_BRIDGE_SIGNALK_UPLINK_ENABLE)) {
-		LOG_INF("SignalK uplink disabled");
+	if (!IS_ENABLED(CONFIG_ESP_SERIAL_BRIDGE_TCP_NMEA_CLIENT_ENABLE)) {
+		LOG_INF("TCP NMEA client disabled");
 		return 0;
 	}
 
 	if (!started) {
 		started = true;
-		k_thread_create(&signalk_uplink_thread, signalk_uplink_stack,
-				K_THREAD_STACK_SIZEOF(signalk_uplink_stack), uplink_thread,
+		k_thread_create(&tcp_nmea_client_thread, tcp_nmea_client_stack,
+				K_THREAD_STACK_SIZEOF(tcp_nmea_client_stack), client_thread,
 				NULL, NULL, NULL, 7, 0, K_NO_WAIT);
 	}
 

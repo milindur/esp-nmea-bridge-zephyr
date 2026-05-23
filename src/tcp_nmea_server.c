@@ -20,7 +20,7 @@ struct client_slot {
 	K_KERNEL_STACK_MEMBER(stack, 2048);
 };
 
-static struct client_slot clients[CONFIG_ESP_SERIAL_BRIDGE_TCP_SERVER_MAX_CLIENTS];
+static struct client_slot clients[CONFIG_ESP_SERIAL_BRIDGE_TCP_NMEA_SERVER_MAX_CLIENTS];
 static int listen_fd = -1;
 static bool started;
 static struct k_mutex clients_lock;
@@ -125,7 +125,7 @@ static void server_thread(void *a, void *b, void *c)
 	(void)zsock_setsockopt(listen_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
 
 	addr.sin_family = AF_INET;
-	addr.sin_port = htons(CONFIG_ESP_SERIAL_BRIDGE_TCP_PORT);
+	addr.sin_port = htons(CONFIG_ESP_SERIAL_BRIDGE_TCP_NMEA_PORT);
 	addr.sin_addr.s_addr = htonl(INADDR_ANY);
 
 	if (zsock_bind(listen_fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
@@ -134,15 +134,15 @@ static void server_thread(void *a, void *b, void *c)
 		return;
 	}
 
-	if (zsock_listen(listen_fd, CONFIG_ESP_SERIAL_BRIDGE_TCP_SERVER_MAX_CLIENTS) < 0) {
+	if (zsock_listen(listen_fd, CONFIG_ESP_SERIAL_BRIDGE_TCP_NMEA_SERVER_MAX_CLIENTS) < 0) {
 		LOG_ERR("listen failed: errno=%d", errno);
 		(void)zsock_close(listen_fd);
 		return;
 	}
 
-	LOG_INF("NMEA TCP server listening on 0.0.0.0:%d max_clients=%d",
-		CONFIG_ESP_SERIAL_BRIDGE_TCP_PORT,
-		CONFIG_ESP_SERIAL_BRIDGE_TCP_SERVER_MAX_CLIENTS);
+	LOG_INF("TCP NMEA server listening on 0.0.0.0:%d max_clients=%d",
+		CONFIG_ESP_SERIAL_BRIDGE_TCP_NMEA_PORT,
+		CONFIG_ESP_SERIAL_BRIDGE_TCP_NMEA_SERVER_MAX_CLIENTS);
 
 	for (;;) {
 		struct sockaddr_in peer;
@@ -180,6 +180,11 @@ K_THREAD_STACK_DEFINE(tcp_server_stack, 4096);
 
 int tcp_nmea_server_start(void)
 {
+	if (!IS_ENABLED(CONFIG_ESP_SERIAL_BRIDGE_TCP_NMEA_SERVER_ENABLE)) {
+		LOG_INF("TCP NMEA server disabled");
+		return 0;
+	}
+
 	if (!started) {
 		k_mutex_init(&clients_lock);
 		for (int i = 0; i < ARRAY_SIZE(clients); i++) {

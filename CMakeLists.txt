@@ -11,5 +11,8 @@ target_sources(app PRIVATE
   src/uart_nmea.c
   src/wifi_manager.c
   src/tcp_nmea_server.c
-  src/tcp_signalk_client.c
+)
+
+target_sources_ifdef(CONFIG_ESP_SERIAL_BRIDGE_TCP_NMEA_CLIENT_ENABLE app PRIVATE
+  src/tcp_nmea_client.c
 )
