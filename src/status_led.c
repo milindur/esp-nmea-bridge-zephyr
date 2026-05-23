@@ -10,6 +10,8 @@
 LOG_MODULE_REGISTER(status_led, LOG_LEVEL_INF);
 
 #define STATUS_LED_UPDATE_MS 100U
+#define STATUS_LED_RETRY_INITIAL_MS 1000U
+#define STATUS_LED_RETRY_MAX_MS 5000U
 
 #if DT_NODE_HAS_STATUS(DT_ALIAS(led_strip), okay)
 #define STATUS_LED_HAS_STRIP 1
@@ -37,6 +39,28 @@ static enum status_led_base_state status_led_current_base_state(void)
 	return base_state;
 }
 
+static bool status_led_rgb_equal(const struct status_led_rgb *a,
+					const struct status_led_rgb *b)
+{
+	return a->r == b->r && a->g == b->g && a->b == b->b;
+}
+
+static uint32_t status_led_retry_delay_ms(uint8_t failed_attempts)
+{
+	uint32_t delay_ms = STATUS_LED_RETRY_INITIAL_MS;
+
+	while (failed_attempts > 1U && delay_ms < STATUS_LED_RETRY_MAX_MS) {
+		delay_ms *= 2U;
+		failed_attempts--;
+	}
+
+	if (delay_ms > STATUS_LED_RETRY_MAX_MS) {
+		return STATUS_LED_RETRY_MAX_MS;
+	}
+
+	return delay_ms;
+}
+
 static void status_led_thread(void *a, void *b, void *c)
 {
 	ARG_UNUSED(a);
@@ -44,20 +68,43 @@ static void status_led_thread(void *a, void *b, void *c)
 	ARG_UNUSED(c);
 
 	int64_t started_ms = k_uptime_get();
+	int64_t next_retry_ms = 0;
+	uint8_t failed_attempts = 0U;
+	bool has_applied_rgb = false;
+	struct status_led_rgb applied_rgb = { 0 };
 
 	for (;;) {
-		uint32_t elapsed_ms = (uint32_t)(k_uptime_get() - started_ms);
+		int64_t now_ms = k_uptime_get();
+		uint32_t elapsed_ms = (uint32_t)(now_ms - started_ms);
 		struct status_led_rgb rendered =
 			status_led_policy_render_base(status_led_current_base_state(), elapsed_ms);
-		struct led_rgb pixel = {
-			.r = rendered.r,
-			.g = rendered.g,
-			.b = rendered.b,
-		};
-		int ret = led_strip_update_rgb(strip, &pixel, 1);
 
-		if (ret != 0) {
-			LOG_WRN("status LED update failed: %d", ret);
+		if ((!has_applied_rgb || !status_led_rgb_equal(&rendered, &applied_rgb)) &&
+		    now_ms >= next_retry_ms) {
+			struct led_rgb pixel = {
+				.r = rendered.r,
+				.g = rendered.g,
+				.b = rendered.b,
+			};
+			int ret = led_strip_update_rgb(strip, &pixel, 1);
+
+			if (ret == 0) {
+				applied_rgb = rendered;
+				has_applied_rgb = true;
+				failed_attempts = 0U;
+				next_retry_ms = 0;
+			} else {
+				uint32_t retry_delay_ms;
+
+				if (failed_attempts < UINT8_MAX) {
+					failed_attempts++;
+				}
+
+				retry_delay_ms = status_led_retry_delay_ms(failed_attempts);
+				next_retry_ms = now_ms + retry_delay_ms;
+				LOG_WRN("status LED update failed: %d; retrying in %u ms", ret,
+					retry_delay_ms);
+			}
 		}
 
 		k_sleep(K_MSEC(STATUS_LED_UPDATE_MS));
