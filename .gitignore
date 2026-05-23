@@ -1,0 +1,3 @@
+# Local build/credential overlays
+local.conf
+*.local.conf

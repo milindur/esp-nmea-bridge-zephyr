@@ -1,0 +1,73 @@
+# ESP Serial Bridge application configuration
+
+mainmenu "ESP Serial Bridge"
+
+menu "ESP NMEA-0183 serial bridge"
+
+config ESP_SERIAL_BRIDGE_AP_ENABLE
+	bool "Enable ESP32 SoftAP TCP server"
+	default y
+
+config ESP_SERIAL_BRIDGE_STA_ENABLE
+	bool "Enable Wi-Fi station mode"
+	default y
+
+config ESP_SERIAL_BRIDGE_SIGNALK_UPLINK_ENABLE
+	bool "Enable SignalK TCP uplink via STA gateway"
+	default y
+	depends on ESP_SERIAL_BRIDGE_STA_ENABLE
+
+config ESP_SERIAL_BRIDGE_AP_SSID
+	string "SoftAP SSID"
+	default "ESP-NMEA0183"
+
+config ESP_SERIAL_BRIDGE_AP_PSK
+	string "SoftAP WPA2 PSK password"
+	default "ChangeMe1234"
+	help
+	  Prototype default only. Override in a local/pristine overlay for real use.
+	  Leave empty to start an open SoftAP.
+
+config ESP_SERIAL_BRIDGE_STA_SSID
+	string "STA target AP SSID"
+	default ""
+
+config ESP_SERIAL_BRIDGE_STA_PSK
+	string "STA target AP password"
+	default ""
+
+config ESP_SERIAL_BRIDGE_TCP_PORT
+	int "NMEA TCP port"
+	default 10110
+
+config ESP_SERIAL_BRIDGE_TCP_SERVER_MAX_CLIENTS
+	int "Maximum TCP server clients"
+	default 3
+	range 1 8
+
+config ESP_SERIAL_BRIDGE_NMEA_FRAME_MAX_LEN
+	int "Maximum NMEA frame length"
+	default 128
+	range 32 512
+
+config ESP_SERIAL_BRIDGE_INGEST_QUEUE_DEPTH
+	int "NMEA ingest queue depth"
+	default 32
+	range 2 256
+
+config ESP_SERIAL_BRIDGE_SINK_QUEUE_DEPTH
+	int "Per-sink NMEA queue depth"
+	default 16
+	range 2 128
+
+config ESP_SERIAL_BRIDGE_AP_IP_ADDRESS
+	string "SoftAP IPv4 address"
+	default "192.168.4.1"
+
+config ESP_SERIAL_BRIDGE_AP_NETMASK
+	string "SoftAP IPv4 netmask"
+	default "255.255.255.0"
+
+endmenu
+
+source "Kconfig.zephyr"
