@@ -37,7 +37,7 @@ K_THREAD_DEFINE(stats_tid, 2048, stats_thread, NULL, NULL, NULL,
 
 int main(void)
 {
-	LOG_INF("ESP serial bridge on %s", CONFIG_BOARD_TARGET);
+	LOG_INF("ESP NMEA bridge on %s", CONFIG_BOARD_TARGET);
 
 	nmea_bridge_init();
 	(void)status_led_start();

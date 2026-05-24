@@ -26,13 +26,13 @@ static int connect_server(const struct net_in_addr *host)
 
 	struct sockaddr_in addr = { 0 };
 	addr.sin_family = AF_INET;
-	addr.sin_port = htons(CONFIG_ESP_SERIAL_BRIDGE_TCP_NMEA_PORT);
+	addr.sin_port = htons(CONFIG_ESP_NMEA_BRIDGE_TCP_NMEA_PORT);
 	addr.sin_addr = *host;
 
 	char host_buf[NET_IPV4_ADDR_LEN];
 	net_addr_ntop(AF_INET, host, host_buf, sizeof(host_buf));
 	LOG_INF("TCP NMEA client connecting to %s:%d", host_buf,
-		CONFIG_ESP_SERIAL_BRIDGE_TCP_NMEA_PORT);
+		CONFIG_ESP_NMEA_BRIDGE_TCP_NMEA_PORT);
 
 	if (zsock_connect(fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
 		int ret = -errno;
@@ -50,13 +50,13 @@ static int connect_server(const struct net_in_addr *host)
 
 static bool get_tcp_nmea_server_host(struct net_in_addr *host)
 {
-	if (strlen(CONFIG_ESP_SERIAL_BRIDGE_TCP_NMEA_CLIENT_HOST) > 0) {
+	if (strlen(CONFIG_ESP_NMEA_BRIDGE_TCP_NMEA_CLIENT_HOST) > 0) {
 		if (!wifi_manager_sta_ready()) {
 			return false;
 		}
 
-		if (net_addr_pton(AF_INET, CONFIG_ESP_SERIAL_BRIDGE_TCP_NMEA_CLIENT_HOST, host) != 0) {
-			LOG_ERR("Invalid TCP NMEA client host IP: %s", CONFIG_ESP_SERIAL_BRIDGE_TCP_NMEA_CLIENT_HOST);
+		if (net_addr_pton(AF_INET, CONFIG_ESP_NMEA_BRIDGE_TCP_NMEA_CLIENT_HOST, host) != 0) {
+			LOG_ERR("Invalid TCP NMEA client host IP: %s", CONFIG_ESP_NMEA_BRIDGE_TCP_NMEA_CLIENT_HOST);
 			k_sleep(K_SECONDS(30));
 			return false;
 		}
@@ -83,7 +83,7 @@ static void client_thread(void *a, void *b, void *c)
 			wait_ticks++;
 			if ((wait_ticks % 5U) == 0U) {
 				LOG_INF("TCP NMEA client waiting for STA IPv4%s",
-					strlen(CONFIG_ESP_SERIAL_BRIDGE_TCP_NMEA_CLIENT_HOST) > 0 ? "" : " gateway");
+					strlen(CONFIG_ESP_NMEA_BRIDGE_TCP_NMEA_CLIENT_HOST) > 0 ? "" : " gateway");
 			}
 			k_sleep(K_SECONDS(2));
 		}
@@ -112,7 +112,7 @@ K_THREAD_STACK_DEFINE(tcp_nmea_client_stack, 4096);
 
 int tcp_nmea_client_start(void)
 {
-	if (!IS_ENABLED(CONFIG_ESP_SERIAL_BRIDGE_TCP_NMEA_CLIENT_ENABLE)) {
+	if (!IS_ENABLED(CONFIG_ESP_NMEA_BRIDGE_TCP_NMEA_CLIENT_ENABLE)) {
 		LOG_INF("TCP NMEA client disabled");
 		return 0;
 	}

@@ -13,7 +13,7 @@ extern "C" {
  * Returns 0 when the observer started or status LED support is disabled or not
  * available. Hardware failures are non-fatal by design.
  */
-#ifdef CONFIG_ESP_SERIAL_BRIDGE_STATUS_LED_ENABLE
+#ifdef CONFIG_ESP_NMEA_BRIDGE_STATUS_LED_ENABLE
 int status_led_start(void);
 void status_led_tcp_nmea_session_started(void);
 void status_led_tcp_nmea_session_ended(void);

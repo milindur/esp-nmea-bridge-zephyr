@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.20.0)
 list(APPEND BOARD_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
 
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
-project(esp_serial_bridge)
+project(esp_nmea_bridge)
 
 target_sources(app PRIVATE
   src/main.c
@@ -14,11 +14,11 @@ target_sources(app PRIVATE
   src/tcp_nmea_session.c
 )
 
-target_sources_ifdef(CONFIG_ESP_SERIAL_BRIDGE_STATUS_LED_ENABLE app PRIVATE
+target_sources_ifdef(CONFIG_ESP_NMEA_BRIDGE_STATUS_LED_ENABLE app PRIVATE
   src/status_led.c
   src/status_led_policy.c
 )
 
-target_sources_ifdef(CONFIG_ESP_SERIAL_BRIDGE_TCP_NMEA_CLIENT_ENABLE app PRIVATE
+target_sources_ifdef(CONFIG_ESP_NMEA_BRIDGE_TCP_NMEA_CLIENT_ENABLE app PRIVATE
   src/tcp_nmea_client.c
 )

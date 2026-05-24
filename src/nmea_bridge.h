@@ -9,7 +9,7 @@
 
 struct nmea_frame {
 	uint16_t len;
-	uint8_t data[CONFIG_ESP_SERIAL_BRIDGE_NMEA_FRAME_MAX_LEN];
+	uint8_t data[CONFIG_ESP_NMEA_BRIDGE_NMEA_FRAME_MAX_LEN];
 };
 
 struct nmea_bridge_stats {

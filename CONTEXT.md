@@ -1,6 +1,6 @@
-# ESP Serial Bridge Context
+# ESP NMEA Bridge Context
 
-This context names the NMEA-over-UART and NMEA-over-TCP concepts used by the ESP serial bridge app.
+This context names the NMEA-over-UART and NMEA-over-TCP concepts used by the ESP NMEA bridge app.
 
 ## Language
 

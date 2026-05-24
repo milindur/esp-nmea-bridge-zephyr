@@ -7,16 +7,16 @@
 
 LOG_MODULE_REGISTER(nmea_bridge, LOG_LEVEL_INF);
 
-#define MAX_SINKS (CONFIG_ESP_SERIAL_BRIDGE_TCP_NMEA_SERVER_MAX_CLIENTS + 1)
+#define MAX_SINKS (CONFIG_ESP_NMEA_BRIDGE_TCP_NMEA_SERVER_MAX_CLIENTS + 1)
 
 K_MSGQ_DEFINE(ingest_msgq, sizeof(struct nmea_frame),
-	     CONFIG_ESP_SERIAL_BRIDGE_INGEST_QUEUE_DEPTH, 4);
+	     CONFIG_ESP_NMEA_BRIDGE_INGEST_QUEUE_DEPTH, 4);
 
 struct sink_slot {
 	bool active;
 	const char *name;
 	struct k_msgq msgq;
-	char buffer[CONFIG_ESP_SERIAL_BRIDGE_SINK_QUEUE_DEPTH * sizeof(struct nmea_frame)];
+	char buffer[CONFIG_ESP_NMEA_BRIDGE_SINK_QUEUE_DEPTH * sizeof(struct nmea_frame)];
 	struct nmea_sink_stats stats;
 };
 
@@ -86,13 +86,13 @@ void nmea_bridge_init(void)
 
 	for (int i = 0; i < ARRAY_SIZE(sinks); i++) {
 		k_msgq_init(&sinks[i].msgq, sinks[i].buffer, sizeof(struct nmea_frame),
-			    CONFIG_ESP_SERIAL_BRIDGE_SINK_QUEUE_DEPTH);
+			    CONFIG_ESP_NMEA_BRIDGE_SINK_QUEUE_DEPTH);
 	}
 
 	LOG_INF("NMEA bridge ready: frame_len=%d ingest_depth=%d sink_depth=%d sinks=%d",
-		CONFIG_ESP_SERIAL_BRIDGE_NMEA_FRAME_MAX_LEN,
-		CONFIG_ESP_SERIAL_BRIDGE_INGEST_QUEUE_DEPTH,
-		CONFIG_ESP_SERIAL_BRIDGE_SINK_QUEUE_DEPTH, MAX_SINKS);
+		CONFIG_ESP_NMEA_BRIDGE_NMEA_FRAME_MAX_LEN,
+		CONFIG_ESP_NMEA_BRIDGE_INGEST_QUEUE_DEPTH,
+		CONFIG_ESP_NMEA_BRIDGE_SINK_QUEUE_DEPTH, MAX_SINKS);
 }
 
 int nmea_bridge_sink_register(const char *name)

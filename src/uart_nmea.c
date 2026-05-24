@@ -27,7 +27,7 @@ static void uart_rx_thread(void *a, void *b, void *c)
 	ARG_UNUSED(b);
 	ARG_UNUSED(c);
 
-	uint8_t line[CONFIG_ESP_SERIAL_BRIDGE_NMEA_FRAME_MAX_LEN];
+	uint8_t line[CONFIG_ESP_NMEA_BRIDGE_NMEA_FRAME_MAX_LEN];
 	size_t line_len = 0;
 	bool dropping_overlong = false;
 

@@ -113,7 +113,7 @@ static void wifi_event_handler(struct net_mgmt_event_callback *cb, uint64_t mgmt
 			sta_ipv4_logged = false;
 			sta_connect_requested = false;
 			LOG_WRN("STA connect to %s failed: status=%d (%s); retry in %us",
-				CONFIG_ESP_SERIAL_BRIDGE_STA_SSID, status->status,
+				CONFIG_ESP_NMEA_BRIDGE_STA_SSID, status->status,
 				wifi_conn_status_txt(status->conn_status), sta_retry_backoff_s);
 			break;
 		}
@@ -121,7 +121,7 @@ static void wifi_event_handler(struct net_mgmt_event_callback *cb, uint64_t mgmt
 		sta_connected = true;
 		sta_connect_requested = false;
 		sta_retry_backoff_s = 5;
-		LOG_INF("STA connected to %s", CONFIG_ESP_SERIAL_BRIDGE_STA_SSID);
+		LOG_INF("STA connected to %s", CONFIG_ESP_NMEA_BRIDGE_STA_SSID);
 		(void)mark_sta_ipv4_ready();
 		break;
 	}
@@ -133,7 +133,7 @@ static void wifi_event_handler(struct net_mgmt_event_callback *cb, uint64_t mgmt
 		sta_has_addr = false;
 		sta_ipv4_logged = false;
 		sta_connect_requested = false;
-		LOG_INF("STA disconnected from %s", CONFIG_ESP_SERIAL_BRIDGE_STA_SSID);
+		LOG_INF("STA disconnected from %s", CONFIG_ESP_NMEA_BRIDGE_STA_SSID);
 		break;
 	case NET_EVENT_WIFI_AP_ENABLE_RESULT:
 		LOG_INF("SoftAP enabled");
@@ -192,13 +192,13 @@ static int start_dhcp_server(void)
 	struct net_in_addr pool_start;
 	int ret;
 
-	if (net_addr_pton(AF_INET, CONFIG_ESP_SERIAL_BRIDGE_AP_IP_ADDRESS, &addr) != 0) {
-		LOG_ERR("Invalid AP IP: %s", CONFIG_ESP_SERIAL_BRIDGE_AP_IP_ADDRESS);
+	if (net_addr_pton(AF_INET, CONFIG_ESP_NMEA_BRIDGE_AP_IP_ADDRESS, &addr) != 0) {
+		LOG_ERR("Invalid AP IP: %s", CONFIG_ESP_NMEA_BRIDGE_AP_IP_ADDRESS);
 		return -EINVAL;
 	}
 
-	if (net_addr_pton(AF_INET, CONFIG_ESP_SERIAL_BRIDGE_AP_NETMASK, &netmask) != 0) {
-		LOG_ERR("Invalid AP netmask: %s", CONFIG_ESP_SERIAL_BRIDGE_AP_NETMASK);
+	if (net_addr_pton(AF_INET, CONFIG_ESP_NMEA_BRIDGE_AP_NETMASK, &netmask) != 0) {
+		LOG_ERR("Invalid AP netmask: %s", CONFIG_ESP_NMEA_BRIDGE_AP_NETMASK);
 		return -EINVAL;
 	}
 
@@ -221,7 +221,7 @@ static int start_dhcp_server(void)
 		return ret;
 	}
 
-	LOG_INF("DHCPv4 server started on %s", CONFIG_ESP_SERIAL_BRIDGE_AP_IP_ADDRESS);
+	LOG_INF("DHCPv4 server started on %s", CONFIG_ESP_NMEA_BRIDGE_AP_IP_ADDRESS);
 	return 0;
 }
 
@@ -235,10 +235,10 @@ static int enable_ap(void)
 	}
 
 	memset(&ap_config, 0, sizeof(ap_config));
-	ap_config.ssid = (const uint8_t *)CONFIG_ESP_SERIAL_BRIDGE_AP_SSID;
-	ap_config.ssid_length = strlen(CONFIG_ESP_SERIAL_BRIDGE_AP_SSID);
-	ap_config.psk = (const uint8_t *)CONFIG_ESP_SERIAL_BRIDGE_AP_PSK;
-	ap_config.psk_length = strlen(CONFIG_ESP_SERIAL_BRIDGE_AP_PSK);
+	ap_config.ssid = (const uint8_t *)CONFIG_ESP_NMEA_BRIDGE_AP_SSID;
+	ap_config.ssid_length = strlen(CONFIG_ESP_NMEA_BRIDGE_AP_SSID);
+	ap_config.psk = (const uint8_t *)CONFIG_ESP_NMEA_BRIDGE_AP_PSK;
+	ap_config.psk_length = strlen(CONFIG_ESP_NMEA_BRIDGE_AP_PSK);
 	ap_config.channel = WIFI_CHANNEL_ANY;
 	ap_config.band = WIFI_FREQ_BAND_2_4_GHZ;
 	ap_config.security = ap_config.psk_length == 0 ? WIFI_SECURITY_TYPE_NONE : WIFI_SECURITY_TYPE_PSK;
@@ -254,7 +254,7 @@ static int enable_ap(void)
 		return ret;
 	}
 
-	LOG_INF("SoftAP enable requested: ssid=%s security=%s", CONFIG_ESP_SERIAL_BRIDGE_AP_SSID,
+	LOG_INF("SoftAP enable requested: ssid=%s security=%s", CONFIG_ESP_NMEA_BRIDGE_AP_SSID,
 		ap_config.security == WIFI_SECURITY_TYPE_NONE ? "open" : "WPA2-PSK");
 	return 0;
 }
@@ -284,7 +284,7 @@ static void rotate_sta_mac(void)
 	bool was_up;
 	int ret;
 
-	if (!IS_ENABLED(CONFIG_ESP_SERIAL_BRIDGE_STA_ROTATE_MAC) || sta_iface == NULL) {
+	if (!IS_ENABLED(CONFIG_ESP_NMEA_BRIDGE_STA_ROTATE_MAC) || sta_iface == NULL) {
 		return;
 	}
 
@@ -362,16 +362,16 @@ static int connect_sta(void)
 		return -ENODEV;
 	}
 
-	if (strlen(CONFIG_ESP_SERIAL_BRIDGE_STA_SSID) == 0) {
+	if (strlen(CONFIG_ESP_NMEA_BRIDGE_STA_SSID) == 0) {
 		LOG_WRN("STA SSID empty; STA connect skipped");
 		return 0;
 	}
 
 	memset(&sta_config, 0, sizeof(sta_config));
-	sta_config.ssid = (const uint8_t *)CONFIG_ESP_SERIAL_BRIDGE_STA_SSID;
-	sta_config.ssid_length = strlen(CONFIG_ESP_SERIAL_BRIDGE_STA_SSID);
-	sta_config.psk = (const uint8_t *)CONFIG_ESP_SERIAL_BRIDGE_STA_PSK;
-	sta_config.psk_length = strlen(CONFIG_ESP_SERIAL_BRIDGE_STA_PSK);
+	sta_config.ssid = (const uint8_t *)CONFIG_ESP_NMEA_BRIDGE_STA_SSID;
+	sta_config.ssid_length = strlen(CONFIG_ESP_NMEA_BRIDGE_STA_SSID);
+	sta_config.psk = (const uint8_t *)CONFIG_ESP_NMEA_BRIDGE_STA_PSK;
+	sta_config.psk_length = strlen(CONFIG_ESP_NMEA_BRIDGE_STA_PSK);
 	sta_config.security = sta_config.psk_length == 0 ? WIFI_SECURITY_TYPE_NONE : WIFI_SECURITY_TYPE_PSK;
 	sta_config.channel = WIFI_CHANNEL_ANY;
 	sta_config.band = WIFI_FREQ_BAND_2_4_GHZ;
@@ -386,7 +386,7 @@ static int connect_sta(void)
 	sta_connect_requested = true;
 	disable_sta_power_save();
 	LOG_INF("STA connect requested: ssid=%s security=%s channel=any",
-		CONFIG_ESP_SERIAL_BRIDGE_STA_SSID, wifi_security_txt(sta_config.security));
+		CONFIG_ESP_NMEA_BRIDGE_STA_SSID, wifi_security_txt(sta_config.security));
 	return 0;
 }
 
@@ -396,8 +396,8 @@ static void sta_retry_thread(void *a, void *b, void *c)
 	ARG_UNUSED(b);
 	ARG_UNUSED(c);
 
-	if (!IS_ENABLED(CONFIG_ESP_SERIAL_BRIDGE_STA_ENABLE) ||
-	    strlen(CONFIG_ESP_SERIAL_BRIDGE_STA_SSID) == 0) {
+	if (!IS_ENABLED(CONFIG_ESP_NMEA_BRIDGE_STA_ENABLE) ||
+	    strlen(CONFIG_ESP_NMEA_BRIDGE_STA_SSID) == 0) {
 		return;
 	}
 
@@ -418,7 +418,7 @@ static void sta_retry_thread(void *a, void *b, void *c)
 		}
 
 		LOG_INF("STA reconnecting to %s after %us backoff",
-			CONFIG_ESP_SERIAL_BRIDGE_STA_SSID, sta_retry_backoff_s);
+			CONFIG_ESP_NMEA_BRIDGE_STA_SSID, sta_retry_backoff_s);
 		disconnect_sta();
 		k_sleep(K_MSEC(500));
 
@@ -451,14 +451,14 @@ int wifi_manager_start(void)
 	/* Follow Zephyr's AP+STA sample: start SoftAP first, then request STA connect.
 	 * The ESP32 driver is expected to manage AP+STA channel coexistence.
 	 */
-	if (IS_ENABLED(CONFIG_ESP_SERIAL_BRIDGE_AP_ENABLE)) {
+	if (IS_ENABLED(CONFIG_ESP_NMEA_BRIDGE_AP_ENABLE)) {
 		ret = enable_ap();
 		if (ret != 0) {
 			LOG_ERR("AP startup failed: %d", ret);
 		}
 	}
 
-	if (IS_ENABLED(CONFIG_ESP_SERIAL_BRIDGE_STA_ENABLE)) {
+	if (IS_ENABLED(CONFIG_ESP_NMEA_BRIDGE_STA_ENABLE)) {
 		disconnect_sta();
 		k_sleep(K_MSEC(500));
 
