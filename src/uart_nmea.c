@@ -57,7 +57,7 @@ static void uart_rx_thread(void *a, void *b, void *c)
 			}
 
 			if (ch == '\n') {
-				nmea_bridge_publish(line, line_len);
+				(void)nmea_bridge_publish_frame(line, line_len);
 				status_led_nmea_frame_received();
 				uart_stats.lines_rx++;
 				line_len = 0;

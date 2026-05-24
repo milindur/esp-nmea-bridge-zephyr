@@ -77,10 +77,10 @@ static bool send_all(int fd, const struct nmea_frame *frame, const char *sink_na
 enum tcp_nmea_session_result tcp_nmea_session_run(int fd, const char *sink_name)
 {
 	enum tcp_nmea_session_result result = TCP_NMEA_SESSION_ENDED_PEER_CLOSED;
-	int sink_id = nmea_bridge_sink_register(sink_name);
+	struct nmea_bridge_sink sink;
 	struct nmea_frame frame;
 
-	if (sink_id < 0) {
+	if (nmea_bridge_sink_open(&sink, sink_name) != 0) {
 		LOG_ERR("Unable to register TCP NMEA session sink: %s", sink_name ? sink_name : "?");
 		(void)zsock_close(fd);
 		return TCP_NMEA_SESSION_ENDED_SINK_UNAVAILABLE;
@@ -93,7 +93,10 @@ enum tcp_nmea_session_result tcp_nmea_session_run(int fd, const char *sink_name)
 			break;
 		}
 
-		int ret = nmea_bridge_sink_get(sink_id, &frame, TCP_NMEA_SESSION_FRAME_WAIT);
+		int ret = nmea_bridge_sink_take(&sink, &frame, TCP_NMEA_SESSION_FRAME_WAIT);
+		if (ret == -ENOTCONN) {
+			break;
+		}
 		if (ret != 0) {
 			continue;
 		}
@@ -111,7 +114,7 @@ enum tcp_nmea_session_result tcp_nmea_session_run(int fd, const char *sink_name)
 	}
 
 	status_led_tcp_nmea_session_ended();
-	nmea_bridge_sink_unregister(sink_id);
+	nmea_bridge_sink_close(&sink);
 	(void)zsock_close(fd);
 	return result;
 }

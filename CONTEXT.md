@@ -5,7 +5,7 @@ This context names the NMEA-over-UART and NMEA-over-TCP concepts used by the ESP
 ## Language
 
 **NMEA frame**:
-A single newline-terminated NMEA-0183 message as carried through the bridge after UART framing.
+A single newline-terminated NMEA-0183 message as carried through the bridge after UART framing. It must remain complete; truncating a NMEA frame is invalid because the trailing checksum would no longer describe the carried bytes.
 _Avoid_: packet, line, message
 
 **NMEA bridge**:

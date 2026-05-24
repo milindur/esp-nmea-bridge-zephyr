@@ -1,5 +1,6 @@
 #include "nmea_bridge.h"
 
+#include <errno.h>
 #include <string.h>
 
 #include <zephyr/logging/log.h>
@@ -7,7 +8,13 @@
 
 LOG_MODULE_REGISTER(nmea_bridge, LOG_LEVEL_INF);
 
-#define MAX_SINKS (CONFIG_ESP_NMEA_BRIDGE_TCP_NMEA_SERVER_MAX_CLIENTS + 1)
+#define MAX_SINKS CONFIG_ESP_NMEA_BRIDGE_NMEA_SINKS_MAX
+
+BUILD_ASSERT(CONFIG_ESP_NMEA_BRIDGE_NMEA_SINKS_MAX >=
+	     (IS_ENABLED(CONFIG_ESP_NMEA_BRIDGE_TCP_NMEA_SERVER_ENABLE) ?
+	      CONFIG_ESP_NMEA_BRIDGE_TCP_NMEA_SERVER_MAX_CLIENTS : 0) +
+	     (IS_ENABLED(CONFIG_ESP_NMEA_BRIDGE_TCP_NMEA_CLIENT_ENABLE) ? 1 : 0),
+	     "NMEA bridge sinks must cover TCP server clients plus TCP client");
 
 K_MSGQ_DEFINE(ingest_msgq, sizeof(struct nmea_frame),
 	     CONFIG_ESP_NMEA_BRIDGE_INGEST_QUEUE_DEPTH, 4);
@@ -95,8 +102,37 @@ void nmea_bridge_init(void)
 		CONFIG_ESP_NMEA_BRIDGE_SINK_QUEUE_DEPTH, MAX_SINKS);
 }
 
-int nmea_bridge_sink_register(const char *name)
+int nmea_bridge_publish_frame(const uint8_t *data, size_t len)
 {
+	struct nmea_frame frame;
+
+	if (data == NULL || len == 0) {
+		bridge_stats.publish_invalid++;
+		return -EINVAL;
+	}
+
+	if (len > sizeof(frame.data)) {
+		bridge_stats.publish_oversize++;
+		LOG_WRN("Rejected oversized NMEA frame: len=%zu max=%zu", len,
+			sizeof(frame.data));
+		return -EMSGSIZE;
+	}
+
+	frame.len = len;
+	memcpy(frame.data, data, frame.len);
+
+	bridge_stats.frames_in++;
+	put_drop_oldest(&ingest_msgq, &frame, &bridge_stats.ingest_dropped_oldest);
+	return 0;
+}
+
+int nmea_bridge_sink_open(struct nmea_bridge_sink *sink, const char *name)
+{
+	if (sink == NULL) {
+		return -EINVAL;
+	}
+
+	sink->id = -1;
 	k_mutex_lock(&sinks_lock, K_FOREVER);
 
 	for (int i = 0; i < ARRAY_SIZE(sinks); i++) {
@@ -105,9 +141,10 @@ int nmea_bridge_sink_register(const char *name)
 			sinks[i].name = name;
 			memset(&sinks[i].stats, 0, sizeof(sinks[i].stats));
 			k_msgq_purge(&sinks[i].msgq);
+			sink->id = i;
 			k_mutex_unlock(&sinks_lock);
 			LOG_INF("NMEA sink registered: %s id=%d", name ? name : "?", i);
-			return i;
+			return 0;
 		}
 	}
 
@@ -115,47 +152,52 @@ int nmea_bridge_sink_register(const char *name)
 	return -ENOMEM;
 }
 
-void nmea_bridge_sink_unregister(int sink_id)
+void nmea_bridge_sink_close(struct nmea_bridge_sink *sink)
 {
-	if (sink_id < 0 || sink_id >= ARRAY_SIZE(sinks)) {
+	if (sink == NULL || sink->id < 0 || sink->id >= ARRAY_SIZE(sinks)) {
 		return;
 	}
+
+	int sink_id = sink->id;
 
 	k_mutex_lock(&sinks_lock, K_FOREVER);
 	sinks[sink_id].active = false;
 	sinks[sink_id].name = NULL;
 	k_msgq_purge(&sinks[sink_id].msgq);
+	sink->id = -1;
 	k_mutex_unlock(&sinks_lock);
 	LOG_INF("NMEA sink unregistered: id=%d", sink_id);
 }
 
-int nmea_bridge_sink_get(int sink_id, struct nmea_frame *frame, k_timeout_t timeout)
+int nmea_bridge_sink_take(struct nmea_bridge_sink *sink, struct nmea_frame *frame,
+				  k_timeout_t timeout)
 {
-	if (sink_id < 0 || sink_id >= ARRAY_SIZE(sinks) || frame == NULL) {
+	if (sink == NULL || frame == NULL) {
 		return -EINVAL;
 	}
 
-	int ret = k_msgq_get(&sinks[sink_id].msgq, frame, timeout);
+	if (sink->id < 0) {
+		return -ENOTCONN;
+	}
+
+	if (sink->id >= ARRAY_SIZE(sinks)) {
+		return -EINVAL;
+	}
+
+	k_mutex_lock(&sinks_lock, K_FOREVER);
+	bool active = sinks[sink->id].active;
+	k_mutex_unlock(&sinks_lock);
+
+	if (!active) {
+		return -ENOTCONN;
+	}
+
+	int ret = k_msgq_get(&sinks[sink->id].msgq, frame, timeout);
 	if (ret == 0) {
-		sinks[sink_id].stats.consumed++;
+		sinks[sink->id].stats.consumed++;
 	}
 
 	return ret;
-}
-
-void nmea_bridge_publish(const uint8_t *data, size_t len)
-{
-	struct nmea_frame frame;
-
-	if (data == NULL || len == 0) {
-		return;
-	}
-
-	frame.len = MIN(len, sizeof(frame.data));
-	memcpy(frame.data, data, frame.len);
-
-	bridge_stats.frames_in++;
-	put_drop_oldest(&ingest_msgq, &frame, &bridge_stats.ingest_dropped_oldest);
 }
 
 void nmea_bridge_get_stats(struct nmea_bridge_stats *stats)
@@ -165,11 +207,13 @@ void nmea_bridge_get_stats(struct nmea_bridge_stats *stats)
 	}
 }
 
-void nmea_bridge_get_sink_stats(int sink_id, struct nmea_sink_stats *stats)
+void nmea_bridge_get_sink_stats(const struct nmea_bridge_sink *sink,
+				       struct nmea_sink_stats *stats)
 {
-	if (stats == NULL || sink_id < 0 || sink_id >= ARRAY_SIZE(sinks)) {
+	if (stats == NULL || sink == NULL || sink->id < 0 ||
+	    sink->id >= ARRAY_SIZE(sinks)) {
 		return;
 	}
 
-	*stats = sinks[sink_id].stats;
+	*stats = sinks[sink->id].stats;
 }
