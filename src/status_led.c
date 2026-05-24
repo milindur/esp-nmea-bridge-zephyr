@@ -17,12 +17,16 @@ LOG_MODULE_REGISTER(status_led, LOG_LEVEL_INF);
 #if DT_NODE_HAS_STATUS(DT_ALIAS(led_strip), okay)
 #define STATUS_LED_HAS_STRIP 1
 #define STATUS_LED_STRIP_NODE DT_ALIAS(led_strip)
+#define STATUS_LED_HAS_I2S_RECOVERY \
+	DT_NODE_HAS_COMPAT(DT_BUS(STATUS_LED_STRIP_NODE), espressif_esp32_i2s)
 static const struct device *const strip = DEVICE_DT_GET(STATUS_LED_STRIP_NODE);
+#if STATUS_LED_HAS_I2S_RECOVERY
 static const struct device *const strip_bus = DEVICE_DT_GET(DT_BUS(STATUS_LED_STRIP_NODE));
+#endif
 #else
 #define STATUS_LED_HAS_STRIP 0
+#define STATUS_LED_HAS_I2S_RECOVERY 0
 static const struct device *const strip;
-static const struct device *const strip_bus;
 #endif
 
 static bool status_led_running;
@@ -52,7 +56,7 @@ static bool status_led_rgb_equal(const struct status_led_rgb *a,
 
 static void status_led_recover_bus(void)
 {
-#if STATUS_LED_HAS_STRIP
+#if STATUS_LED_HAS_I2S_RECOVERY
 	int ret = i2s_trigger(strip_bus, I2S_DIR_TX, I2S_TRIGGER_DROP);
 
 	if (ret < 0) {
