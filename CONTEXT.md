@@ -28,9 +28,17 @@ _Avoid_: upstream session
 The aggregate availability of active TCP NMEA sessions for carrying NMEA frames. A listening TCP NMEA server without an active session is not connected.
 _Avoid_: Wi-Fi state, server state
 
+**NMEA input state**:
+The current availability of NMEA frames at the UART input, evaluated over a short time window. The ESP NMEA bridge treats input as active when NMEA bridge accepted-frame counts increase during that window.
+_Avoid_: NMEA health, data health, UART health
+
 **NMEA forwarding activity**:
 A short-lived occurrence where an NMEA frame is received from UART or successfully sent by a TCP NMEA session.
 _Avoid_: packet activity, data event
+
+**Bridge telemetry**:
+Observational status about the ESP NMEA bridge, including counters, NMEA input state, NMEA connection state, and warnings for local display or diagnostics. It is not a control plane; modules that change bridge behaviour should use separate control concepts.
+_Avoid_: status service, control state, management API
 
 ## Example dialogue
 

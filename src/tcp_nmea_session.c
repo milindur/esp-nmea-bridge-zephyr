@@ -11,12 +11,15 @@
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/net/socket.h>
+#include <zephyr/sys/atomic.h>
 
 LOG_MODULE_REGISTER(tcp_nmea_session, LOG_LEVEL_INF);
 
 #define TCP_NMEA_SESSION_RX_DRAIN_BUF_SIZE 128
 #define TCP_NMEA_SESSION_FRAME_WAIT K_MSEC(250)
 #define TCP_NMEA_SESSION_SEND_RETRY_DELAY K_MSEC(10)
+
+static atomic_t active_sessions;
 
 static bool drain_socket_rx(int fd, const char *sink_name,
 				    enum tcp_nmea_session_result *result)
@@ -86,6 +89,7 @@ enum tcp_nmea_session_result tcp_nmea_session_run(int fd, const char *sink_name)
 		return TCP_NMEA_SESSION_ENDED_SINK_UNAVAILABLE;
 	}
 
+	atomic_inc(&active_sessions);
 	status_led_tcp_nmea_session_started();
 
 	for (;;) {
@@ -114,7 +118,15 @@ enum tcp_nmea_session_result tcp_nmea_session_run(int fd, const char *sink_name)
 	}
 
 	status_led_tcp_nmea_session_ended();
+	atomic_dec(&active_sessions);
 	nmea_bridge_sink_close(&sink);
 	(void)zsock_close(fd);
 	return result;
+}
+
+void tcp_nmea_session_get_stats(struct tcp_nmea_session_stats *stats)
+{
+	if (stats != NULL) {
+		stats->active_sessions = (uint32_t)atomic_get(&active_sessions);
+	}
 }

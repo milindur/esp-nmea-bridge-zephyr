@@ -1,9 +1,6 @@
 #include "web_app.h"
 
-#include "nmea_bridge.h"
-#include "tcp_nmea_server.h"
-#include "uart_nmea.h"
-#include "wifi_manager.h"
+#include "bridge_telemetry.h"
 
 #include <errno.h>
 #include <stdbool.h>
@@ -19,7 +16,7 @@ LOG_MODULE_REGISTER(web_app, LOG_LEVEL_INF);
 
 #define WEB_APP_HTTP_PORT 80
 #define WEB_APP_RX_BUF_SIZE 384
-#define WEB_APP_JSON_BUF_SIZE 768
+#define WEB_APP_JSON_BUF_SIZE 1024
 
 extern const char web_asset_index_html_start[];
 extern const char web_asset_index_html_end[];
@@ -99,35 +96,38 @@ static void write_asset_response(int fd, const struct web_asset *asset)
 
 static void write_status_json(int fd)
 {
-	struct uart_nmea_stats uart_stats;
-	struct nmea_bridge_stats bridge_stats;
-	struct tcp_nmea_server_stats server_stats;
+	struct bridge_telemetry_snapshot snapshot;
+	const struct bridge_telemetry_counters *counters = &snapshot.counters;
+	const char *connection_state;
+	const char *input_state;
 	char body[WEB_APP_JSON_BUF_SIZE];
-	bool sta_ready = wifi_manager_sta_ready();
-	const char *health = "ok";
 
-	uart_nmea_get_stats(&uart_stats);
-	nmea_bridge_get_stats(&bridge_stats);
-	tcp_nmea_server_get_stats(&server_stats);
-
-	if (!sta_ready || bridge_stats.publish_invalid > 0U || bridge_stats.publish_oversize > 0U ||
-	    uart_stats.overlong_lines > 0U) {
-		health = "degraded";
-	}
+	bridge_telemetry_get_snapshot(&snapshot);
+	connection_state = snapshot.connection_state == BRIDGE_TELEMETRY_NMEA_CONNECTED ?
+		"connected" : "disconnected";
+	input_state = snapshot.input_state == BRIDGE_TELEMETRY_NMEA_INPUT_ACTIVE ?
+		"active" : "idle";
 
 	(void)snprintk(body, sizeof(body),
-		"{\"health\":\"%s\",\"wifi\":{\"sta_ready\":%s},"
+		"{\"connection_state\":\"%s\",\"input_state\":\"%s\","
+		"\"warnings\":{\"data_quality\":%s,\"frame_loss\":%s},"
+		"\"wifi\":{\"sta_ready\":%s},"
 		"\"uart\":{\"bytes_rx\":%u,\"lines_rx\":%u,\"overlong_lines\":%u},"
 		"\"bridge\":{\"frames_in\":%u,\"ingest_dropped_oldest\":%u,"
 		"\"sink_dropped_oldest\":%u,\"publish_no_sinks\":%u,"
 		"\"publish_invalid\":%u,\"publish_oversize\":%u},"
+		"\"tcp\":{\"active_sessions\":%u},"
 		"\"tcp_server\":{\"active_clients\":%u,\"max_clients\":%u}}",
-		health, sta_ready ? "true" : "false",
-		uart_stats.bytes_rx, uart_stats.lines_rx, uart_stats.overlong_lines,
-		bridge_stats.frames_in, bridge_stats.ingest_dropped_oldest,
-		bridge_stats.sink_dropped_oldest, bridge_stats.publish_no_sinks,
-		bridge_stats.publish_invalid, bridge_stats.publish_oversize,
-		server_stats.active_clients, server_stats.max_clients);
+		connection_state, input_state,
+		snapshot.warnings.data_quality ? "true" : "false",
+		snapshot.warnings.frame_loss ? "true" : "false",
+		snapshot.sta_ready ? "true" : "false",
+		counters->uart_bytes_rx, counters->uart_lines_rx, counters->uart_overlong_lines,
+		counters->bridge_frames_in, counters->bridge_ingest_dropped_oldest,
+		counters->bridge_sink_dropped_oldest, counters->bridge_publish_no_sinks,
+		counters->bridge_publish_invalid, counters->bridge_publish_oversize,
+		counters->tcp_nmea_active_sessions,
+		counters->tcp_server_active_clients, counters->tcp_server_max_clients);
 
 	write_text_response(fd, "200 OK", "application/json", body);
 }

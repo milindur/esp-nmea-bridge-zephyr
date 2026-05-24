@@ -3,62 +3,120 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>ESP NMEA Bridge</title>
+  <meta name="theme-color" content="#f1ead4">
+  <title>ESP NMEA Bridge · Status</title>
   <link rel="stylesheet" href="/style.css">
 </head>
 <body>
-  <main class="dashboard">
-    <section class="masthead" aria-labelledby="page-title">
-      <div class="masthead-copy">
-        <p class="eyebrow">NMEA-0183 serial bridge</p>
-        <h1 id="page-title">Bridge Watch</h1>
-        <p class="subtitle">Local telemetry console for the onboard ESP bridge.</p>
+  <a class="skip" href="#main">Skip to status</a>
+
+  <header class="ribbon">
+    <div class="ribbon-inner">
+      <div class="mark">
+        <svg class="mark-glyph" viewBox="0 0 40 40" aria-hidden="true">
+          <circle cx="20" cy="20" r="18" fill="none" stroke="currentColor" stroke-width="1"/>
+          <circle cx="20" cy="20" r="11" fill="none" stroke="currentColor" stroke-width=".6"/>
+          <path d="M20 2 L20 38 M2 20 L38 20" stroke="currentColor" stroke-width=".6"/>
+          <path d="M6 6 L34 34 M34 6 L6 34" stroke="currentColor" stroke-width=".35" opacity=".6"/>
+          <path d="M20 4 L23 20 L20 36 L17 20 Z" fill="currentColor"/>
+          <circle cx="20" cy="20" r="1.4" fill="#f1ead4"/>
+        </svg>
+        <div class="mark-text">
+          <span class="mark-eyebrow">Marine telemetry &middot; NMEA-0183 &middot; 38.4 kBd</span>
+          <h1 class="mark-name">ESP <em>NMEA</em> Bridge</h1>
+        </div>
       </div>
 
-      <aside class="status-card" aria-live="polite">
-        <span class="status-label">System health</span>
-        <div id="health" class="health warn">
-          <span class="beacon" aria-hidden="true"></span>
-          <b>WAITING…</b>
-        </div>
-        <span id="updated" class="timestamp">No data yet.</span>
-      </aside>
-    </section>
+      <nav class="tabs" aria-label="Sections">
+        <a class="tab is-active" href="#" aria-current="page">Status</a>
+        <a class="tab is-future" href="#" aria-disabled="true">Configuration<em>soon</em></a>
+        <a class="tab is-future" href="#" aria-disabled="true">OTA Updates<em>soon</em></a>
+      </nav>
+    </div>
+    <div class="ribbon-rule" aria-hidden="true">
+      <span>00</span><span>05</span><span>10</span><span>15</span><span>20</span><span>25</span><span>30</span><span>35</span><span>40</span>
+    </div>
+  </header>
 
-    <section class="chart-panel" aria-label="Bridge telemetry">
-      <div class="compass" aria-hidden="true"><span>N</span><span>E</span><span>S</span><span>W</span></div>
-
-      <div class="metrics">
-        <article class="metric primary">
-          <span class="label">NMEA Frames</span>
-          <strong id="frames" class="value">—</strong>
-          <span class="hint">Accepted sentences</span>
-        </article>
-        <article class="metric">
-          <span class="label">UART Bytes</span>
-          <strong id="bytes" class="value">—</strong>
-          <span class="hint">Serial ingress</span>
-        </article>
-        <article class="metric">
-          <span class="label">TCP Clients</span>
-          <strong id="clients" class="value">—</strong>
-          <span class="hint">Connected / allowed</span>
-        </article>
-        <article class="metric alertable">
-          <span class="label">Sink Drops</span>
-          <strong id="drops" class="value">—</strong>
-          <span class="hint">Backpressure events</span>
-        </article>
+  <main id="main" class="page">
+    <section class="hero" aria-label="Bridge headline">
+      <div class="hero-eyebrow">
+        <span class="rule"></span>
+        <span>Watch in progress</span>
+        <time id="updated">Standing by</time>
       </div>
 
-      <section class="detail-log" aria-label="Detailed counters">
-        <div class="section-heading">
-          <span>Navigation data path</span>
-          <small>polling /api/status every 2 s</small>
-        </div>
-        <div id="details" class="rows"></div>
-      </section>
+      <div class="hero-grid">
+        <article class="figure">
+          <span class="figure-cap">NMEA frames accepted since boot</span>
+          <strong id="frames" class="figure-value">&mdash;</strong>
+          <span class="figure-foot">Valid sentences delivered to subscribers.</span>
+        </article>
+
+        <aside class="signals" aria-label="Live signals">
+          <div class="signal">
+            <span class="signal-cap">NMEA connection</span>
+            <div id="connection-state" class="signal-state state-warn">
+              <span class="dot" aria-hidden="true"></span>
+              <b>WAITING</b>
+            </div>
+          </div>
+          <div class="signal">
+            <span class="signal-cap">UART NMEA input</span>
+            <div id="input-state" class="signal-state state-warn">
+              <span class="dot" aria-hidden="true"></span>
+              <b>WAITING</b>
+            </div>
+          </div>
+          <div class="signal">
+            <span class="signal-cap">Wi-Fi station link</span>
+            <div id="wifi-state" class="signal-state state-warn">
+              <span class="dot" aria-hidden="true"></span>
+              <b>&mdash;</b>
+            </div>
+          </div>
+        </aside>
+      </div>
     </section>
+
+    <section class="metric-row" aria-label="Primary counters">
+      <article class="card">
+        <span class="card-cap">UART ingress</span>
+        <strong id="bytes" class="card-value">&mdash;</strong>
+        <span class="card-foot">Bytes received over serial</span>
+      </article>
+      <article class="card">
+        <span class="card-cap">Inbound TCP clients</span>
+        <strong id="clients" class="card-value">&mdash;</strong>
+        <span class="card-foot">Connected / allowed</span>
+      </article>
+      <article class="card">
+        <span class="card-cap">Sink drops</span>
+        <strong id="drops" class="card-value">&mdash;</strong>
+        <span class="card-foot">Backpressure evictions</span>
+      </article>
+      <article class="card">
+        <span class="card-cap">Warnings</span>
+        <strong id="warn-count" class="card-value">&mdash;</strong>
+        <span class="card-foot">Data quality &middot; frame loss</span>
+      </article>
+    </section>
+
+    <section class="log" aria-label="Detailed diagnostics">
+      <header class="log-header">
+        <div>
+          <span class="log-eyebrow">Log Book</span>
+          <h2 class="log-title">Navigation data path</h2>
+        </div>
+        <span class="log-source">Polling <code>/api/status</code> &middot; 2&thinsp;s</span>
+      </header>
+      <dl id="details" class="log-grid"></dl>
+    </section>
+
+    <footer class="colophon">
+      <span>ESP NMEA Bridge &middot; firmware live</span>
+      <span>Configuration &amp; OTA Updates &middot; on the chart for an upcoming release</span>
+    </footer>
   </main>
 
   <script src="/app.js"></script>

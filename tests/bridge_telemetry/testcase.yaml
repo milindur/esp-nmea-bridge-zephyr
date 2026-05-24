@@ -1,0 +1,4 @@
+tests:
+  bridge_telemetry.policy:
+    platform_allow: native_sim
+    tags: bridge_telemetry

@@ -27,6 +27,7 @@ set_property(SOURCE ${CMAKE_CURRENT_BINARY_DIR}/web_assets.S PROPERTY OBJECT_DEP
 )
 
 target_sources_ifdef(CONFIG_ESP_NMEA_BRIDGE_WEB_APP_ENABLE app PRIVATE
+  src/bridge_telemetry.c
   src/web_app.c
   ${CMAKE_CURRENT_BINARY_DIR}/web_assets.S
 )
