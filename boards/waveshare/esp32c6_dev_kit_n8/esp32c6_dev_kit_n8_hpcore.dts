@@ -83,6 +83,7 @@
 				 LED_COLOR_ID_GREEN
 				 LED_COLOR_ID_BLUE>;
 		reset-delay = <500>;
+		extra-wait-time = <5000>;
 	};
 };
 

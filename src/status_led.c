@@ -3,6 +3,7 @@
 
 #include <zephyr/device.h>
 #include <zephyr/devicetree.h>
+#include <zephyr/drivers/i2s.h>
 #include <zephyr/drivers/led_strip.h>
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
@@ -17,9 +18,11 @@ LOG_MODULE_REGISTER(status_led, LOG_LEVEL_INF);
 #define STATUS_LED_HAS_STRIP 1
 #define STATUS_LED_STRIP_NODE DT_ALIAS(led_strip)
 static const struct device *const strip = DEVICE_DT_GET(STATUS_LED_STRIP_NODE);
+static const struct device *const strip_bus = DEVICE_DT_GET(DT_BUS(STATUS_LED_STRIP_NODE));
 #else
 #define STATUS_LED_HAS_STRIP 0
 static const struct device *const strip;
+static const struct device *const strip_bus;
 #endif
 
 static bool status_led_running;
@@ -44,6 +47,17 @@ static bool status_led_rgb_equal(const struct status_led_rgb *a,
 					const struct status_led_rgb *b)
 {
 	return a->r == b->r && a->g == b->g && a->b == b->b;
+}
+
+static void status_led_recover_bus(void)
+{
+#if STATUS_LED_HAS_STRIP
+	int ret = i2s_trigger(strip_bus, I2S_DIR_TX, I2S_TRIGGER_DROP);
+
+	if (ret < 0) {
+		LOG_DBG("status LED I2S recovery trigger failed: %d", ret);
+	}
+#endif
 }
 
 static uint32_t status_led_retry_delay_ms(uint8_t failed_attempts)
@@ -94,6 +108,8 @@ static void status_led_thread(void *a, void *b, void *c)
 				next_retry_ms = 0;
 			} else {
 				uint32_t retry_delay_ms;
+
+				status_led_recover_bus();
 
 				if (failed_attempts < UINT8_MAX) {
 					failed_attempts++;
