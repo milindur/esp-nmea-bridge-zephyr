@@ -102,6 +102,8 @@ enum tcp_nmea_session_result tcp_nmea_session_run(int fd, const char *sink_name)
 			break;
 		}
 
+		status_led_nmea_frame_forwarded();
+
 		if (drain_socket_rx(fd, sink_name, &result)) {
 			break;
 		}

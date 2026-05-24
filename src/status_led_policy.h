@@ -19,6 +19,7 @@ extern "C" {
 #define STATUS_LED_CONNECTED_GREEN 16U
 #define STATUS_LED_NMEA_ACTIVITY_FLASH_MS 250U
 #define STATUS_LED_NMEA_ACTIVITY_BLUE 16U
+#define STATUS_LED_NMEA_FORWARDED_WHITE 24U
 
 struct status_led_rgb {
 	uint8_t r;
@@ -36,6 +37,7 @@ struct status_led_policy_state {
 	uint16_t active_tcp_nmea_sessions;
 	bool outbound_tcp_nmea_client_connecting;
 	uint32_t nmea_activity_flash_until_ms;
+	uint32_t nmea_forwarded_flash_until_ms;
 };
 
 void status_led_policy_tcp_nmea_session_started(struct status_led_policy_state *state);
@@ -44,6 +46,8 @@ void status_led_policy_tcp_nmea_client_connecting(struct status_led_policy_state
 						 bool connecting);
 void status_led_policy_nmea_frame_received(struct status_led_policy_state *state,
 					  uint32_t now_ms);
+void status_led_policy_nmea_frame_forwarded(struct status_led_policy_state *state,
+					   uint32_t now_ms);
 enum status_led_base_state
 status_led_policy_base_state(const struct status_led_policy_state *state);
 

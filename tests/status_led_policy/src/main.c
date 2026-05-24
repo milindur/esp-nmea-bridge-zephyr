@@ -124,6 +124,48 @@ ZTEST(status_led_policy, test_nmea_frame_flash_expires_to_connected_base)
 	zassert_equal(rgb.b, 0U);
 }
 
+ZTEST(status_led_policy, test_nmea_frame_forwarded_flashes_white)
+{
+	struct status_led_policy_state state = { 0 };
+	struct status_led_rgb rgb;
+
+	status_led_policy_nmea_frame_forwarded(&state, 1000U);
+	rgb = status_led_policy_render(&state, 1000U);
+
+	zassert_equal(rgb.r, STATUS_LED_NMEA_FORWARDED_WHITE);
+	zassert_equal(rgb.g, STATUS_LED_NMEA_FORWARDED_WHITE);
+	zassert_equal(rgb.b, STATUS_LED_NMEA_FORWARDED_WHITE);
+}
+
+ZTEST(status_led_policy, test_nmea_frame_forwarded_flash_wins_over_receipt_flash)
+{
+	struct status_led_policy_state state = { 0 };
+	struct status_led_rgb rgb;
+
+	status_led_policy_nmea_frame_received(&state, 1000U);
+	status_led_policy_nmea_frame_forwarded(&state, 1000U);
+	rgb = status_led_policy_render(&state, 1000U);
+
+	zassert_equal(rgb.r, STATUS_LED_NMEA_FORWARDED_WHITE);
+	zassert_equal(rgb.g, STATUS_LED_NMEA_FORWARDED_WHITE);
+	zassert_equal(rgb.b, STATUS_LED_NMEA_FORWARDED_WHITE);
+}
+
+ZTEST(status_led_policy, test_nmea_frame_forwarded_flash_expires_to_connected_base)
+{
+	struct status_led_policy_state state = { 0 };
+	uint32_t expired_ms = 1000U + STATUS_LED_NMEA_ACTIVITY_FLASH_MS;
+	struct status_led_rgb rgb;
+
+	status_led_policy_tcp_nmea_session_started(&state);
+	status_led_policy_nmea_frame_forwarded(&state, 1000U);
+	rgb = status_led_policy_render(&state, expired_ms);
+
+	zassert_equal(rgb.r, 0U);
+	zassert_equal(rgb.g, STATUS_LED_CONNECTED_GREEN);
+	zassert_equal(rgb.b, 0U);
+}
+
 ZTEST(status_led_policy, test_active_session_drives_connected_state)
 {
 	struct status_led_policy_state state = { 0 };

@@ -19,6 +19,7 @@ void status_led_tcp_nmea_session_started(void);
 void status_led_tcp_nmea_session_ended(void);
 void status_led_tcp_nmea_client_connecting(bool connecting);
 void status_led_nmea_frame_received(void);
+void status_led_nmea_frame_forwarded(void);
 #else
 static inline int status_led_start(void)
 {
@@ -39,6 +40,10 @@ static inline void status_led_tcp_nmea_client_connecting(bool connecting)
 }
 
 static inline void status_led_nmea_frame_received(void)
+{
+}
+
+static inline void status_led_nmea_frame_forwarded(void)
 {
 }
 #endif
