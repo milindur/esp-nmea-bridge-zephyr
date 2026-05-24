@@ -31,6 +31,29 @@ config ESP_NMEA_BRIDGE_STATUS_LED_ENABLE
 	  devicetree alias and renders NMEA connection state. Missing or
 	  non-ready LED hardware is non-fatal.
 
+config ESP_NMEA_BRIDGE_MDNS_ENABLE
+	bool "Enable mDNS hostname responder"
+	default n
+	select NET_HOSTNAME_ENABLE
+	select MDNS_RESPONDER
+	help
+	  Enable Zephyr's mDNS responder so the device can answer
+	  <hostname>.local queries. Set CONFIG_NET_HOSTNAME to choose the
+	  hostname.
+
+config ESP_NMEA_BRIDGE_DNS_SD_ENABLE
+	bool "Advertise TCP NMEA service via DNS-SD"
+	default n
+	depends on ESP_NMEA_BRIDGE_MDNS_ENABLE
+	depends on ESP_NMEA_BRIDGE_TCP_NMEA_SERVER_ENABLE
+	select DNS_SD
+	select MDNS_RESPONDER_DNS_SD
+	help
+	  Advertise the TCP NMEA-0183 server as _nmea-0183._tcp.local via
+	  DNS Service Discovery. This option is only available when the local
+	  TCP NMEA server is enabled, so the service is never advertised
+	  without a listening server.
+
 config ESP_NMEA_BRIDGE_TCP_NMEA_CLIENT_HOST
 	string "TCP NMEA server IPv4 address"
 	default ""

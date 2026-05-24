@@ -22,3 +22,7 @@ target_sources_ifdef(CONFIG_ESP_NMEA_BRIDGE_STATUS_LED_ENABLE app PRIVATE
 target_sources_ifdef(CONFIG_ESP_NMEA_BRIDGE_TCP_NMEA_CLIENT_ENABLE app PRIVATE
   src/tcp_nmea_client.c
 )
+
+target_sources_ifdef(CONFIG_ESP_NMEA_BRIDGE_DNS_SD_ENABLE app PRIVATE
+  src/nmea_dns_sd.c
+)

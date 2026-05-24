@@ -71,7 +71,18 @@ Important options:
 - `CONFIG_ESP_NMEA_BRIDGE_TCP_NMEA_SERVER_ENABLE`: enable the inbound TCP NMEA server
 - `CONFIG_ESP_NMEA_BRIDGE_TCP_NMEA_CLIENT_ENABLE`: enable the outbound TCP NMEA client
 - `CONFIG_ESP_NMEA_BRIDGE_TCP_NMEA_CLIENT_HOST`: target IP address; leave empty to use the DHCP gateway learned on the station interface
+- `CONFIG_ESP_NMEA_BRIDGE_MDNS_ENABLE`: enable mDNS hostname resolution for `CONFIG_NET_HOSTNAME.local`; defaults to off
+- `CONFIG_ESP_NMEA_BRIDGE_DNS_SD_ENABLE`: advertise the TCP NMEA server as `_nmea-0183._tcp.local`; depends on mDNS and the TCP NMEA server and defaults to off
 - `CONFIG_ESP_NMEA_BRIDGE_STATUS_LED_ENABLE`: enable the optional status LED observer; it uses a `led-strip` devicetree alias when present and can be disabled with `CONFIG_ESP_NMEA_BRIDGE_STATUS_LED_ENABLE=n`
+
+The committed defaults keep LAN discovery disabled. For a local deployment, enable it in `local.conf`:
+
+```conf
+CONFIG_ESP_NMEA_BRIDGE_MDNS_ENABLE=y
+CONFIG_ESP_NMEA_BRIDGE_DNS_SD_ENABLE=y
+```
+
+The default hostname is `esp-nmea-bridge`, so mDNS resolves `esp-nmea-bridge.local` when enabled. The advertised NMEA service uses TCP port `10110` by default and includes TXT metadata for a read-only MAIANA GPS/AIS RX passthrough (`txtvers=1`, `talkers=GP,AI`, `content=gps,ais-rx`, `source=maiana`, `ro=1`).
 
 ## Build
 
@@ -110,6 +121,29 @@ sudo udevadm trigger -s tty
 
 west flash -d build-esp32c6 --esp-device /dev/waveshare/esp32c6-dev-kit-n8/jtag
 ```
+
+## Verify mDNS and DNS-SD discovery
+
+When `CONFIG_ESP_NMEA_BRIDGE_MDNS_ENABLE=y`, resolve the device hostname from a Linux host on the same Wi-Fi network:
+
+```sh
+avahi-resolve -4 -n esp-nmea-bridge.local
+ping esp-nmea-bridge.local
+```
+
+When `CONFIG_ESP_NMEA_BRIDGE_DNS_SD_ENABLE=y` and the TCP NMEA server is enabled, browse the advertised NMEA-0183 TCP service:
+
+```sh
+avahi-browse -t -r _nmea-0183._tcp
+```
+
+If direct browsing does not show the ESP service, enumerate all services and filter for the bridge:
+
+```sh
+avahi-browse --all --resolve --terminate | grep -A8 -B2 esp-nmea
+```
+
+The service is intentionally not available in Kconfig when `CONFIG_ESP_NMEA_BRIDGE_TCP_NMEA_SERVER_ENABLE=n`, so the bridge does not advertise `_nmea-0183._tcp` without a listening TCP server.
 
 ## Tests
 
