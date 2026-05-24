@@ -1,5 +1,10 @@
 #include "status_led_policy.h"
 
+static bool flash_active_until(bool active, uint32_t now_ms, uint32_t until_ms)
+{
+	return active && (int32_t)(now_ms - until_ms) < 0;
+}
+
 void status_led_policy_tcp_nmea_session_started(struct status_led_policy_state *state)
 {
 	state->active_tcp_nmea_sessions++;
@@ -21,18 +26,21 @@ void status_led_policy_tcp_nmea_client_connecting(struct status_led_policy_state
 void status_led_policy_nmea_frame_received(struct status_led_policy_state *state,
 					  uint32_t now_ms)
 {
+	state->nmea_activity_flash_active = true;
 	state->nmea_activity_flash_until_ms = now_ms + STATUS_LED_NMEA_ACTIVITY_FLASH_MS;
 }
 
 void status_led_policy_nmea_frame_forwarded(struct status_led_policy_state *state,
 					   uint32_t now_ms)
 {
+	state->nmea_forwarded_flash_active = true;
 	state->nmea_forwarded_flash_until_ms = now_ms + STATUS_LED_NMEA_ACTIVITY_FLASH_MS;
 }
 
 void status_led_policy_nmea_send_failed(struct status_led_policy_state *state,
 					uint32_t now_ms)
 {
+	state->nmea_error_flash_active = true;
 	state->nmea_error_flash_until_ms = now_ms + STATUS_LED_NMEA_ACTIVITY_FLASH_MS;
 }
 
@@ -53,17 +61,20 @@ status_led_policy_base_state(const struct status_led_policy_state *state)
 struct status_led_rgb status_led_policy_render(const struct status_led_policy_state *state,
 						 uint32_t elapsed_ms)
 {
-	if (elapsed_ms < state->nmea_error_flash_until_ms) {
+	if (flash_active_until(state->nmea_error_flash_active, elapsed_ms,
+			       state->nmea_error_flash_until_ms)) {
 		return (struct status_led_rgb){ STATUS_LED_NMEA_ERROR_RED, 0, 0 };
 	}
 
-	if (elapsed_ms < state->nmea_forwarded_flash_until_ms) {
+	if (flash_active_until(state->nmea_forwarded_flash_active, elapsed_ms,
+			       state->nmea_forwarded_flash_until_ms)) {
 		return (struct status_led_rgb){ STATUS_LED_NMEA_FORWARDED_WHITE,
 					       STATUS_LED_NMEA_FORWARDED_WHITE,
 					       STATUS_LED_NMEA_FORWARDED_WHITE };
 	}
 
-	if (elapsed_ms < state->nmea_activity_flash_until_ms) {
+	if (flash_active_until(state->nmea_activity_flash_active, elapsed_ms,
+			       state->nmea_activity_flash_until_ms)) {
 		return (struct status_led_rgb){ 0, 0, STATUS_LED_NMEA_ACTIVITY_BLUE };
 	}
 

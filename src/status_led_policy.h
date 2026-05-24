@@ -35,6 +35,9 @@ enum status_led_base_state {
 struct status_led_policy_state {
 	uint16_t active_tcp_nmea_sessions;
 	bool outbound_tcp_nmea_client_connecting;
+	bool nmea_activity_flash_active;
+	bool nmea_forwarded_flash_active;
+	bool nmea_error_flash_active;
 	uint32_t nmea_activity_flash_until_ms;
 	uint32_t nmea_forwarded_flash_until_ms;
 	uint32_t nmea_error_flash_until_ms;

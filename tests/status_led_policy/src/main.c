@@ -199,6 +199,31 @@ ZTEST(status_led_policy, test_nmea_send_failure_flash_expires_to_connected_base)
 	zassert_equal(rgb.b, 0U);
 }
 
+ZTEST(status_led_policy, test_flash_window_survives_elapsed_time_wrap)
+{
+	struct status_led_policy_state state = { 0 };
+	struct status_led_rgb rgb;
+
+	uint32_t wrapped_flash_start = UINT32_MAX - (STATUS_LED_NMEA_ACTIVITY_FLASH_MS / 2U);
+
+	status_led_policy_nmea_frame_received(&state, wrapped_flash_start);
+	rgb = status_led_policy_render(&state, 0U);
+
+	zassert_equal(rgb.r, 0U);
+	zassert_equal(rgb.g, 0U);
+	zassert_equal(rgb.b, STATUS_LED_NMEA_ACTIVITY_BLUE);
+}
+
+ZTEST(status_led_policy, test_inactive_zero_deadline_does_not_flash_after_time_wrap)
+{
+	struct status_led_policy_state state = { 0 };
+	struct status_led_rgb rgb = status_led_policy_render(&state, UINT32_MAX);
+
+	zassert_equal(rgb.r, STATUS_LED_DISCONNECTED_RED);
+	zassert_equal(rgb.g, 0U);
+	zassert_equal(rgb.b, 0U);
+}
+
 ZTEST(status_led_policy, test_active_session_drives_connected_state)
 {
 	struct status_led_policy_state state = { 0 };
