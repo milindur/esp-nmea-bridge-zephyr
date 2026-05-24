@@ -1,5 +1,6 @@
 #include "tcp_nmea_client.h"
 
+#include "status_led.h"
 #include "tcp_nmea_session.h"
 #include "wifi_manager.h"
 
@@ -87,6 +88,8 @@ static void client_thread(void *a, void *b, void *c)
 			k_sleep(K_SECONDS(2));
 		}
 
+		status_led_tcp_nmea_client_connecting(true);
+
 		int fd = connect_server(&host);
 		if (fd < 0) {
 			k_sleep(K_SECONDS(backoff_s));
@@ -94,9 +97,11 @@ static void client_thread(void *a, void *b, void *c)
 			continue;
 		}
 
+		status_led_tcp_nmea_client_connecting(false);
 		backoff_s = 1;
 		(void)tcp_nmea_session_run(fd, "tcp-nmea-client");
 		LOG_INF("TCP NMEA client disconnected; reconnecting");
+		status_led_tcp_nmea_client_connecting(true);
 		k_sleep(K_SECONDS(backoff_s));
 		backoff_s = MIN(backoff_s * 2, 30U);
 	}

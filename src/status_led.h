@@ -1,6 +1,8 @@
 #ifndef STATUS_LED_H_
 #define STATUS_LED_H_
 
+#include <stdbool.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -15,6 +17,7 @@ extern "C" {
 int status_led_start(void);
 void status_led_tcp_nmea_session_started(void);
 void status_led_tcp_nmea_session_ended(void);
+void status_led_tcp_nmea_client_connecting(bool connecting);
 #else
 static inline int status_led_start(void)
 {
@@ -27,6 +30,11 @@ static inline void status_led_tcp_nmea_session_started(void)
 
 static inline void status_led_tcp_nmea_session_ended(void)
 {
+}
+
+static inline void status_led_tcp_nmea_client_connecting(bool connecting)
+{
+	(void)connecting;
 }
 #endif
 

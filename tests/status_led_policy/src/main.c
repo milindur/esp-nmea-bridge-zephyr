@@ -31,6 +31,23 @@ ZTEST(status_led_policy, test_disconnected_repeats_after_period)
 	zassert_equal(rgb.b, 0U);
 }
 
+ZTEST(status_led_policy, test_connecting_is_dim_yellow_orange_pulse)
+{
+	struct status_led_rgb rgb =
+		status_led_policy_render_base(STATUS_LED_BASE_CONNECTING,
+						      STATUS_LED_CONNECTING_PERIOD_MS / 2U);
+
+	zassert_equal(rgb.r, STATUS_LED_CONNECTING_RED_MAX);
+	zassert_equal(rgb.g, STATUS_LED_CONNECTING_GREEN_MAX);
+	zassert_equal(rgb.b, 0U);
+
+	rgb = status_led_policy_render_base(STATUS_LED_BASE_CONNECTING, 0U);
+
+	zassert_equal(rgb.r, STATUS_LED_CONNECTING_RED_MIN);
+	zassert_equal(rgb.g, STATUS_LED_CONNECTING_GREEN_MIN);
+	zassert_equal(rgb.b, 0U);
+}
+
 ZTEST(status_led_policy, test_connected_is_dim_steady_green)
 {
 	struct status_led_rgb rgb =
@@ -57,6 +74,35 @@ ZTEST(status_led_policy, test_active_session_drives_connected_state)
 	status_led_policy_tcp_nmea_session_started(&state);
 
 	zassert_equal(status_led_policy_base_state(&state), STATUS_LED_BASE_CONNECTED);
+}
+
+ZTEST(status_led_policy, test_outbound_client_retry_drives_connecting_state)
+{
+	struct status_led_policy_state state = { 0 };
+
+	zassert_equal(status_led_policy_base_state(&state), STATUS_LED_BASE_DISCONNECTED);
+
+	status_led_policy_tcp_nmea_client_connecting(&state, true);
+
+	zassert_equal(status_led_policy_base_state(&state), STATUS_LED_BASE_CONNECTING);
+
+	status_led_policy_tcp_nmea_client_connecting(&state, false);
+
+	zassert_equal(status_led_policy_base_state(&state), STATUS_LED_BASE_DISCONNECTED);
+}
+
+ZTEST(status_led_policy, test_connected_state_wins_over_connecting_state)
+{
+	struct status_led_policy_state state = { 0 };
+
+	status_led_policy_tcp_nmea_client_connecting(&state, true);
+	status_led_policy_tcp_nmea_session_started(&state);
+
+	zassert_equal(status_led_policy_base_state(&state), STATUS_LED_BASE_CONNECTED);
+
+	status_led_policy_tcp_nmea_session_ended(&state);
+
+	zassert_equal(status_led_policy_base_state(&state), STATUS_LED_BASE_CONNECTING);
 }
 
 ZTEST(status_led_policy, test_overlapping_sessions_disconnect_after_last_end)
