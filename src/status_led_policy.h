@@ -8,8 +8,6 @@
 extern "C" {
 #endif
 
-#define STATUS_LED_DISCONNECTED_PERIOD_MS 2000U
-#define STATUS_LED_DISCONNECTED_ON_MS 1000U
 #define STATUS_LED_DISCONNECTED_RED 16U
 #define STATUS_LED_CONNECTING_PERIOD_MS 1000U
 #define STATUS_LED_CONNECTING_RED_MIN 4U
@@ -58,10 +56,10 @@ status_led_policy_base_state(const struct status_led_policy_state *state);
 /**
  * Render the current NMEA connection state base pattern.
  *
- * The disconnected base state is a dim red slow blink, the connecting base state
- * is a dim yellow/orange pulse, and the connected base state is steady dim
- * green. These policy functions are independent from Zephyr devices so they can
- * be unit tested on a host.
+ * The disconnected base state is steady dim red, the connecting base state is a
+ * dim yellow/orange pulse, and the connected base state is steady dim green.
+ * These policy functions are independent from Zephyr devices so they can be unit
+ * tested on a host.
  */
 struct status_led_rgb status_led_policy_render(const struct status_led_policy_state *state,
 						 uint32_t elapsed_ms);

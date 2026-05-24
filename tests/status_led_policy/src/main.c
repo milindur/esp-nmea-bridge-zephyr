@@ -2,29 +2,15 @@
 
 #include "status_led_policy.h"
 
-ZTEST(status_led_policy, test_disconnected_is_dim_red_during_on_phase)
+ZTEST(status_led_policy, test_disconnected_is_steady_dim_red)
 {
 	struct status_led_rgb rgb = status_led_policy_render_disconnected(0U);
 
 	zassert_equal(rgb.r, STATUS_LED_DISCONNECTED_RED);
 	zassert_equal(rgb.g, 0U);
 	zassert_equal(rgb.b, 0U);
-}
 
-ZTEST(status_led_policy, test_disconnected_is_off_during_off_phase)
-{
-	struct status_led_rgb rgb =
-		status_led_policy_render_disconnected(STATUS_LED_DISCONNECTED_ON_MS);
-
-	zassert_equal(rgb.r, 0U);
-	zassert_equal(rgb.g, 0U);
-	zassert_equal(rgb.b, 0U);
-}
-
-ZTEST(status_led_policy, test_disconnected_repeats_after_period)
-{
-	struct status_led_rgb rgb =
-		status_led_policy_render_disconnected(STATUS_LED_DISCONNECTED_PERIOD_MS);
+	rgb = status_led_policy_render_disconnected(5000U);
 
 	zassert_equal(rgb.r, STATUS_LED_DISCONNECTED_RED);
 	zassert_equal(rgb.g, 0U);
@@ -57,8 +43,7 @@ ZTEST(status_led_policy, test_connected_is_dim_steady_green)
 	zassert_equal(rgb.g, STATUS_LED_CONNECTED_GREEN);
 	zassert_equal(rgb.b, 0U);
 
-	rgb = status_led_policy_render_base(STATUS_LED_BASE_CONNECTED,
-					    STATUS_LED_DISCONNECTED_ON_MS);
+	rgb = status_led_policy_render_base(STATUS_LED_BASE_CONNECTED, 1000U);
 
 	zassert_equal(rgb.r, 0U);
 	zassert_equal(rgb.g, STATUS_LED_CONNECTED_GREEN);
@@ -81,7 +66,7 @@ ZTEST(status_led_policy, test_nmea_frame_receipt_flashes_blue)
 ZTEST(status_led_policy, test_nmea_frame_flash_expires_to_disconnected_base)
 {
 	struct status_led_policy_state state = { 0 };
-	uint32_t expired_ms = STATUS_LED_DISCONNECTED_PERIOD_MS;
+	uint32_t expired_ms = 1000U + STATUS_LED_NMEA_ACTIVITY_FLASH_MS;
 	struct status_led_rgb rgb;
 
 	status_led_policy_nmea_frame_received(&state,
