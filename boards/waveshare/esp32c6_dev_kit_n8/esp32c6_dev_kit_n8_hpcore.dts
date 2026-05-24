@@ -10,7 +10,7 @@
 #include "esp32c6_dev_kit_n8_hpcore-pinctrl.dtsi"
 #include <zephyr/dt-bindings/input/input-event-codes.h>
 #include <zephyr/dt-bindings/led/led.h>
-#include <espressif/partitions_0x0_default.dtsi>
+#include <espressif/partitions_0x0_default_8M.dtsi>
 
 / {
 	model = "Waveshare ESP32-C6-DEV-KIT-N8 HP Core";

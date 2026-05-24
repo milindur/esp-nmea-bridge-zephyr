@@ -5,8 +5,8 @@
  */
 /dts-v1/;
 
-#include <espressif/esp32c6/esp32c6_lpcore_wroom_n4.dtsi>
-#include <espressif/partitions_0x0_default.dtsi>
+#include "esp32c6_lpcore_wroom_n8.dtsi"
+#include <espressif/partitions_0x0_default_8M.dtsi>
 
 / {
 	model = "Waveshare ESP32-C6-DEV-KIT-N8 LPCORE";
