@@ -22,27 +22,33 @@ west blobs fetch hal_espressif
 
 ## Set up a Zephyr workspace
 
-Example for a fresh workspace with this app as an out-of-tree application:
+This repository is the west manifest repository. It is cloned into `esp-nmea-bridge/` and pins the Zephyr revision plus Zephyr's module set in `west.yml`.
+
+Example for a fresh workspace:
 
 ```sh
-mkdir esp-nmea-bridge-zephyr
-cd esp-nmea-bridge-zephyr
+mkdir esp-nmea-bridge-workspace
+cd esp-nmea-bridge-workspace
 
 python3 -m venv .venv
 source .venv/bin/activate
 pip install --upgrade pip west
 
-west init
+west init -m git@github.com:milindur/esp-nmea-bridge.git --mr main
 west update
 west zephyr-export
 pip install -r zephyr/scripts/requirements.txt
 west blobs fetch hal_espressif
-
-mkdir -p apps
-git clone git@github.com:milindur/esp-nmea-bridge-zephyr.git apps/esp-nmea-bridge
 ```
 
-If the repository has already been checked out as a complete workspace, this is usually enough:
+If you cloned this repository manually first, initialize west from the local checkout instead:
+
+```sh
+west init -l esp-nmea-bridge
+west update
+```
+
+If the workspace has already been initialized, this is usually enough:
 
 ```sh
 source .venv/bin/activate
@@ -92,7 +98,7 @@ From the workspace root:
 west build -p always \
   -d build-esp32c6 \
   -b esp32c6_dev_kit_n8/esp32c6/hpcore \
-  apps/esp-nmea-bridge \
+  esp-nmea-bridge \
   -- -DEXTRA_CONF_FILE=local.conf
 ```
 
@@ -102,7 +108,7 @@ Without a local overlay file:
 west build -p always \
   -d build-esp32c6 \
   -b esp32c6_dev_kit_n8/esp32c6/hpcore \
-  apps/esp-nmea-bridge
+  esp-nmea-bridge
 ```
 
 ## Flash and monitor
@@ -115,7 +121,7 @@ west espressif monitor
 If the board definition's udev rules are installed, flash explicitly through the stable JTAG link:
 
 ```sh
-sudo cp apps/esp-nmea-bridge/boards/waveshare/esp32c6_dev_kit_n8/support/99-waveshare-esp32c6-dev-kit-n8.rules /etc/udev/rules.d/
+sudo cp esp-nmea-bridge/boards/waveshare/esp32c6_dev_kit_n8/support/99-waveshare-esp32c6-dev-kit-n8.rules /etc/udev/rules.d/
 sudo udevadm control --reload-rules
 sudo udevadm trigger -s tty
 
@@ -150,7 +156,7 @@ The service is intentionally not available in Kconfig when `CONFIG_ESP_NMEA_BRID
 Run the status LED policy test with Twister:
 
 ```sh
-west twister -T apps/esp-nmea-bridge/tests/status_led_policy --inline-logs
+west twister -T esp-nmea-bridge/tests/status_led_policy --inline-logs
 ```
 
 ## Further Zephyr documentation
